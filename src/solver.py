@@ -14,7 +14,7 @@ class Solver(object):
                        "weight_decay": 0.0}
 
   def __init__(self, optim=torch.optim.Adam, optim_args={},
-               loss_func=torch.nn.L1Loss(), saveDir='../models/', vis=False):
+               loss_func=torch.nn.SmoothL1Loss(), saveDir='../models/', vis=False):
     optim_args_merged = self.default_adam_args.copy()
     optim_args_merged.update(optim_args)
     self.optim_args = optim_args_merged
@@ -39,7 +39,7 @@ class Solver(object):
     """
     optim = self.optim(filter(lambda p: p.requires_grad,model.parameters()),
                        **self.optim_args)
-    scheduler = False # torch.optim.lr_scheduler.ReduceLROnPlateau(optim)
+    scheduler = torch.optim.lr_scheduler.StepLR(optim, step_size=20, gamma=.5) # False
     
     iter_per_epoch = len(train_loader)
     start_epoch = 0
@@ -87,7 +87,7 @@ class Solver(object):
         if log_nth and i % log_nth == 0:
           last_log_nth_losses = self.train_loss_history[-log_nth:]
           train_loss = np.mean(last_log_nth_losses)
-          print('[Iteration {:d}/{:d}] TRAIN loss: {:.2f}'
+          print('[Iteration {:d}/{:d}] TRAIN loss: {:.3f}'
                 .format(i + epoch * iter_per_epoch,
                   iter_per_epoch * num_epochs,
                   train_loss))
@@ -99,7 +99,7 @@ class Solver(object):
                                     type_upd="append")
 
       if log_nth:
-        print('[Epoch {:d}/{:d}] TRAIN   loss: {:.2f}'.format(epoch + 1,
+        print('[Epoch {:d}/{:d}] TRAIN   loss: {:.3f}'.format(epoch + 1,
                                                               num_epochs,
                                                               train_loss))
 
@@ -118,7 +118,7 @@ class Solver(object):
           scheduler.step(val_acc)
 
         if log_nth:
-          print('[Epoch {:d}/{:d}] VAL acc/loss: {:.2%}/{:.2f}'.format(epoch + 1,
+          print('[Epoch {:d}/{:d}] VAL acc/loss: {:.2%}/{:.3f}'.format(epoch + 1,
                                                                       num_epochs,
                                                                       val_acc,
                                                                       val_loss))
@@ -149,7 +149,8 @@ class Solver(object):
         
         outputs = model.forward(inputs)
         loss = self.loss_func(outputs, targets)
-        test_loss.update(loss.data.cpu().numpy())
+        test_loss.update(loss.item())
+        test_acc.update((outputs == targets).sum().item())
 
     test_acc = float(test_acc.avg)
     test_loss = float(test_loss.avg)

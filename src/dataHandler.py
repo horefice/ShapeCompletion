@@ -36,7 +36,7 @@ class DataHandler(Dataset):
     vol = torch.from_numpy(self.data[index]).float()
     vol[0].abs_().clamp_(max=self.truncation)
     vol.requires_grad_()
-    target = torch.from_numpy(self.target[index]).clamp(max=self.truncation).float().requires_grad_()
+    target = torch.from_numpy(self.target[index]).clamp(max=self.truncation).float()
 
     return vol, target
 

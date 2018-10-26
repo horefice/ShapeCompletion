@@ -26,6 +26,8 @@ parser.add_argument('--lr', '--learning-rate', type=float, default=1e-3, metavar
                     help='learning rate (default: 1e-3)')
 parser.add_argument('--tr', '--truncation', type=int, default=3, metavar='N',
                     help='truncation value for distance field (default: 3)')
+parser.add_argument('--log_transform', type=bool, default=True, metavar='B',
+                    help='use log tranformation')
 parser.add_argument('--val-size', type=float, default=0.2, metavar='F',
                     help='val/(train+val) set size ratio (default: 0.2)')
 parser.add_argument('--model', type=str, default='', metavar='S',
@@ -74,7 +76,7 @@ print('Test size: {} x {}'.format(len(test_data), test_data[0][0].shape))
 ## LOAD MODEL & SOLVER
 print('\nLOADING NETWORK & SOLVER.')
 
-model = MyNet()
+model = MyNet(log_transform=args.log_transform)
 device = torch.device("cuda:0" if args.cuda else "cpu")
 checkpoint = {}
 if args.model:
@@ -117,4 +119,4 @@ test_loader = torch.utils.data.DataLoader(test_data,
 test_acc, test_loss = solver.test(model, test_loader)
 
 print('Test accuracy: {:.2%}'.format(test_acc))
-print('Test loss: {:.2f}'.format(test_loss))
+print('Test loss: {:.3f}'.format(test_loss))

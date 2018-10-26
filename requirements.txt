@@ -3,4 +3,5 @@ torch
 torchvision
 h5py
 matplotlib
+scikit-image
 visdom
