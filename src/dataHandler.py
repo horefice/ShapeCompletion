@@ -42,7 +42,6 @@ class DataHandler(Dataset):
     to_tensor = transforms.ToTensor()
     tsdf = torch.from_numpy(self.data[index]).float()
     tsdf[0].abs_().clamp_(max=self.truncation)
-    tsdf.requires_grad_()
     target = torch.from_numpy(self.target[index]).clamp(max=self.truncation).float()
 
     return tsdf, target
