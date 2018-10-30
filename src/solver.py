@@ -2,8 +2,9 @@ import numpy as np
 import sys
 import os
 import shutil
-
 import torch
+
+from demo import main as demo
 from utils import AverageMeter
 from viz import Viz
 
@@ -14,14 +15,15 @@ class Solver(object):
                        "weight_decay": 0.0}
 
   def __init__(self, optim=torch.optim.Adam, optim_args={},
-               loss_func=torch.nn.SmoothL1Loss(), saveDir='../models/', vis=False):
+               loss_func=torch.nn.SmoothL1Loss(), args={'saveDir':'../models/',
+               'visdom':False, 'mask':False}):
     optim_args_merged = self.default_adam_args.copy()
     optim_args_merged.update(optim_args)
     self.optim_args = optim_args_merged
     self.optim = optim
     self.loss_func = loss_func
-    self.saveDir = saveDir
-    self.visdom = Viz() if vis else False
+    self.args = args
+    self.visdom = Viz() if args['visdom'] else False
     self._reset_history()
 
   def train(self, model, train_loader, val_loader, num_epochs=10, log_nth=0,
@@ -39,7 +41,7 @@ class Solver(object):
     """
     optim = self.optim(filter(lambda p: p.requires_grad,model.parameters()),
                        **self.optim_args)
-    scheduler = torch.optim.lr_scheduler.StepLR(optim, step_size=20, gamma=.5) # False
+    scheduler = torch.optim.lr_scheduler.StepLR(optim, step_size=20, gamma=.5)
     
     iter_per_epoch = len(train_loader)
     start_epoch = 0
@@ -76,9 +78,17 @@ class Solver(object):
       train_loss = 0
 
       for i, (inputs, targets) in enumerate(train_loader, 1):
+        if model.log_transform:
+          targets = targets.abs().add(1).log()
+
         inputs, targets = inputs.to(device), targets.to(device)
+
         optim.zero_grad()
         outputs = model(inputs)
+        if self.args['mask']:
+          outputs[inputs[:,[1]] == 1] = 0
+          targets[inputs[:,[1]] == 1] = 0
+
         loss = self.loss_func(outputs, targets)
         loss.backward()
         optim.step()
@@ -93,8 +103,8 @@ class Solver(object):
                   train_loss))
 
           if self.visdom:
-            self.visdom.update_plot(x=epoch + i / iter_per_epoch,
-                                    y=train_loss,
+            x = epoch + i / iter_per_epoch
+            self.visdom.update_plot(x=x, y=train_loss,
                                     window=iter_plot,
                                     type_upd="append")
 
@@ -123,12 +133,17 @@ class Solver(object):
                                                                       val_acc,
                                                                       val_loss))
       
-      self._save_checkpoint({
-        'epoch': epoch + 1,
-        'state_dict': model.state_dict(),
-        'best_val_acc': best_val_acc,
-        'optimizer' : optim.state_dict(),
-      }, is_best)
+      # do checkpointing
+      if self.args['save_interval'] and (epoch+1) % self.args['save_interval'] == 0:
+        self._save_checkpoint({
+          'epoch': epoch + 1,
+          'state_dict': model.state_dict(),
+          'best_val_acc': best_val_acc,
+          'optimizer' : optim.state_dict(),
+        }, is_best)
+
+        if self.visdom:
+          self.visdom.matplot(demo('../models/checkpoint.pth', '../datasets/sample/overfit.h5'))
 
   def test(self, model, test_loader):
     """
@@ -148,9 +163,13 @@ class Solver(object):
         inputs, targets = inputs.to(device), targets.to(device)
         
         outputs = model.forward(inputs)
+        if self.args['mask']:
+          outputs[inputs[:,[1]] == 1] = 0
+          targets[inputs[:,[1]] == 1] = 0
+
         loss = self.loss_func(outputs, targets)
         test_loss.update(loss.item())
-        test_acc.update((outputs == targets).sum().item())
+        #test_acc.update((outputs == targets).sum().item())
 
     test_acc = float(test_acc.avg)
     test_loss = float(test_loss.avg)
@@ -161,11 +180,11 @@ class Solver(object):
     Save current state of training and trigger method to save training history.
     """
     print('Saving at checkpoint...')
-    path = os.path.join(self.saveDir, fname)
+    path = os.path.join(self.args['saveDir'], fname)
     torch.save(state, path)
     self._save_history()
     if is_best:
-      shutil.copyfile(path, os.path.join(self.saveDir, 'model_best.pth'))
+      return #shutil.copyfile(path, os.path.join(self.args['saveDir'], 'model_best.pth'))
 
   def _reset_history(self):
     """
@@ -179,7 +198,7 @@ class Solver(object):
     """
     Save training history. Conventionally the fname should end with "*.npz".
     """
-    np.savez(os.path.join(self.saveDir, fname),
+    np.savez(os.path.join(self.args['saveDir'], fname),
             train_loss_history=self.train_loss_history,
             val_loss_history=self.val_loss_history,
             val_acc_history=self.val_acc_history)
@@ -188,7 +207,7 @@ class Solver(object):
     """
     Load training history. Conventionally the fname should end with "*.npz".
     """
-    npzfile = np.load(os.path.join(self.saveDir, fname))
+    npzfile = np.load(os.path.join(self.args['saveDir'], fname))
     self.train_loss_history = npzfile['train_loss_history'].tolist()
     self.val_acc_history = npzfile['val_acc_history'].tolist()
     self.val_loss_history = npzfile['val_loss_history'].tolist()

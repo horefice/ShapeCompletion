@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import h5py
+import os
 from torchvision import transforms
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -8,10 +9,16 @@ from torch.utils.data.sampler import SubsetRandomSampler
 class DataHandler(Dataset):
   def __init__(self, path, truncation=3):
     super(DataHandler, self).__init__()
-    file = h5py.File(path, 'r')
-    self.data = file['data']
-    self.target = file['target']
     self.truncation = truncation
+    self.data = []
+    self.target = []
+
+    for root, dirs, files in os.walk(path):
+      for file in files:
+        if file.endswith('.h5'):
+          h5_file = h5py.File(os.path.join(root,file), 'r')
+          self.data = np.array(h5_file['data'])
+          self.target = np.array(h5_file['target'])
 
   def __getitem__(self, key):
     if isinstance(key, slice):
@@ -33,12 +40,12 @@ class DataHandler(Dataset):
 
   def get_item_from_index(self, index):
     to_tensor = transforms.ToTensor()
-    vol = torch.from_numpy(self.data[index]).float()
-    vol[0].abs_().clamp_(max=self.truncation)
-    vol.requires_grad_()
+    tsdf = torch.from_numpy(self.data[index]).float()
+    tsdf[0].abs_().clamp_(max=self.truncation)
+    tsdf.requires_grad_()
     target = torch.from_numpy(self.target[index]).clamp(max=self.truncation).float()
 
-    return vol, target
+    return tsdf, target
 
   def subdivide_dataset(self, val_size, shuffle=False, seed=1):
     num_samples = int(len(self))

@@ -21,6 +21,7 @@ class AverageMeter(object):
     self.avg = self.sum / self.count
 
 def writeArgsFile(args,saveDir):
+  os.makedirs(saveDir, exist_ok=True)
   args_list = dict((name, getattr(args, name)) for name in dir(args)
                 if not name.startswith('_'))
   file_name = os.path.join(saveDir, 'args.txt')

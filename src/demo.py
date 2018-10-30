@@ -12,18 +12,21 @@ from skimage import measure
 from mpl_toolkits.mplot3d import Axes3D
 from nn import MyNet
 
-parser = argparse.ArgumentParser(description='Demo')
-parser.add_argument('--model', type=str, default='../models/checkpoint.pth',
-                    help='Trained model path')
-parser.add_argument('--file', type=str, default='../datasets/sample/overfit.h5',
-                    help='Use file as input')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='disables CUDA')
-args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
+def main(argmodel, argfile, argcuda=False, show=False, timeit=False):
+  model = MyNet()
+  device = torch.device("cuda:0" if argcuda else "cpu")
 
-def predict_and_plot(inputs, model, target=None, timeit=False):
-  model.eval()
+  model.load_state_dict(torch.load(argmodel)['state_dict'])
+  model.to(device).eval()
+
+  file = h5py.File(argfile, 'r')
+  inputs = torch.from_numpy(file['data'][()]).unsqueeze(0).float()
+  inputs[0,0].abs_().clamp_(max=3)
+  target = None
+  try:
+    target = file['target'][0]
+  except Exception as e:
+    pass
 
   start = time.time()
   result = model.forward(inputs)
@@ -31,7 +34,7 @@ def predict_and_plot(inputs, model, target=None, timeit=False):
   if timeit:
     print('Prediction function took {:.2f} ms'.format((time.time()-start)*1000.0))
 
-  create_plot(inputs.data.cpu().numpy()[0,0], result.data.cpu().numpy()[0,0], target)
+  return create_plot(inputs.data.cpu().numpy()[0,0], result.data.cpu().numpy()[0,0], target, show=show)
 
 def isosurface(M,v,step):
     """
@@ -43,8 +46,8 @@ def isosurface(M,v,step):
     return verts, faces
     
 
-def create_plot(inputs, result, target=None):
-  f = plt.figure(figsize=(20,10))
+def create_plot(inputs, result, target=None, show=False):
+  f = plt.figure(figsize=(20,10) if show else (6,4))
   f.suptitle('Demo')
 
   ax1 = f.add_subplot(131, projection='3d')
@@ -55,7 +58,7 @@ def create_plot(inputs, result, target=None):
 
   ax2 = f.add_subplot(132, projection='3d')
   ax2.set_title('Prediction')
-  verts, faces = isosurface(inputs,1,1)
+  verts, faces = isosurface(result,1,1)
   ax2.plot_trisurf(verts[:, 0], verts[:,1], faces, verts[:, 2], lw=1, cmap="Spectral")
   ax2.view_init(elev=150, azim=-120)
 
@@ -66,22 +69,20 @@ def create_plot(inputs, result, target=None):
     ax3.plot_trisurf(verts[:, 0], verts[:,1], faces, verts[:, 2], lw=1, cmap="Spectral")
     ax3.view_init(elev=150, azim=-120)
 
-  plt.show()
+  if show:
+    plt.show()
+
+  return plt
 
 if __name__ == '__main__':
-  model = MyNet()
-  device = torch.device("cuda:0" if args.cuda else "cpu")
+  parser = argparse.ArgumentParser(description='Demo')
+  parser.add_argument('--model', type=str, default='../models/checkpoint.pth',
+                      help='Trained model path')
+  parser.add_argument('--file', type=str, default='../datasets/sample/overfit.h5',
+                      help='Use file as input')
+  parser.add_argument('--no-cuda', action='store_true', default=False,
+                      help='disables CUDA')
+  args = parser.parse_args()
+  args.cuda = not args.no_cuda and torch.cuda.is_available()
 
-  model.load_state_dict(torch.load(args.model)['state_dict'])
-  model.to(device).eval()
-
-  file = h5py.File(args.file, 'r')
-  inputs = torch.from_numpy(file['data'][()]).unsqueeze(0).float()
-  inputs[0,0].abs_().clamp_(max=3)
-  target = None
-  try:
-    target = file['target'][0]
-  except Exception as e:
-    pass
-
-  predict_and_plot(inputs, model, target)
+  main(args.model, args.file, args.cuda, show=True)
