@@ -17,8 +17,8 @@ class DataHandler(Dataset):
       for file in files:
         if file.endswith('.h5'):
           h5_file = h5py.File(os.path.join(root,file), 'r')
-          self.data = np.array(h5_file['data'])
-          self.target = np.array(h5_file['target'])
+          self.data = np.array(h5_file['data']) if len(self.data) == 0 else np.concatenate((self.data, np.array(h5_file['data'])))
+          self.target = np.array(h5_file['target']) if len(self.target) == 0 else np.concatenate((self.target, np.array(h5_file['target'])))
 
   def __getitem__(self, key):
     if isinstance(key, slice):

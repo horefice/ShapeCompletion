@@ -6,18 +6,20 @@ import numpy as np
 import torch
 import argparse
 import time
+import os
 import h5py
 import matplotlib.pyplot as plt
 from skimage import measure
 from mpl_toolkits.mplot3d import Axes3D
 from nn import MyNet
 
-def main(argmodel, argfile, argcuda=False, show=False, timeit=False):
+def main(argmodel, argfile, argcuda=False, timeit=False):
   model = MyNet()
   device = torch.device("cuda:0" if argcuda else "cpu")
 
-  model.load_state_dict(torch.load(argmodel)['state_dict'])
-  model.to(device).eval()
+  checkpoint = torch.load(argmodel, map_location=device)
+  model.load_state_dict(checkpoint['state_dict'])
+  model.eval()
 
   file = h5py.File(argfile, 'r')
   inputs = torch.from_numpy(file['data'][()]).unsqueeze(0).float()
@@ -34,7 +36,9 @@ def main(argmodel, argfile, argcuda=False, show=False, timeit=False):
   if timeit:
     print('Prediction function took {:.2f} ms'.format((time.time()-start)*1000.0))
 
-  return create_plot(inputs.data.cpu().numpy()[0,0], result.data.cpu().numpy()[0,0], target, show=show)
+  create_plot(inputs.data.cpu().numpy()[0,0], result.data.cpu().numpy()[0,0], target,
+              title='Demo - Epoch {:d}'.format(checkpoint['epoch']))
+
 
 def isosurface(M,v,step):
     """
@@ -46,9 +50,9 @@ def isosurface(M,v,step):
     return verts, faces
     
 
-def create_plot(inputs, result, target=None, show=False):
-  f = plt.figure(figsize=(20,10) if show else (6,4))
-  f.suptitle('Demo')
+def create_plot(inputs, result, target=None, title='Demo'):
+  f = plt.figure(num=1, figsize=(20,10))
+  f.suptitle(title)
 
   ax1 = f.add_subplot(131, projection='3d')
   ax1.set_title('Input')
@@ -69,10 +73,7 @@ def create_plot(inputs, result, target=None, show=False):
     ax3.plot_trisurf(verts[:, 0], verts[:,1], faces, verts[:, 2], lw=1, cmap="Spectral")
     ax3.view_init(elev=150, azim=-120)
 
-  if show:
-    plt.show()
-
-  return plt
+  f.canvas.draw()
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Demo')
@@ -80,9 +81,23 @@ if __name__ == '__main__':
                       help='Trained model path')
   parser.add_argument('--file', type=str, default='../datasets/sample/overfit.h5',
                       help='Use file as input')
+  parser.add_argument('--no-live', action='store_true', default=False,
+                      help='disables live updates')
   parser.add_argument('--no-cuda', action='store_true', default=False,
                       help='disables CUDA')
   args = parser.parse_args()
   args.cuda = not args.no_cuda and torch.cuda.is_available()
 
-  main(args.model, args.file, args.cuda, show=True)
+  plt.ion()
+  plt.show(False)
+
+  main(args.model, args.file, args.cuda)
+  cached = os.stat(args.model).st_mtime
+
+  while not args.no_live:
+    stamp = os.stat(args.model).st_mtime
+    if stamp != cached:
+      cached = stamp
+      main(args.model, args.file, args.cuda)
+      
+    plt.pause(5)

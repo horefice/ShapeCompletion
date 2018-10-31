@@ -16,7 +16,7 @@ class Solver(object):
 
   def __init__(self, optim=torch.optim.Adam, optim_args={},
                loss_func=torch.nn.SmoothL1Loss(), args={'saveDir':'../models/',
-               'visdom':False, 'mask':False}):
+               'visdom':False, 'mask':False, 'save_interval': 10}):
     optim_args_merged = self.default_adam_args.copy()
     optim_args_merged.update(optim_args)
     self.optim_args = optim_args_merged
@@ -142,8 +142,8 @@ class Solver(object):
           'optimizer' : optim.state_dict(),
         }, is_best)
 
-        if self.visdom:
-          self.visdom.matplot(demo('../models/checkpoint.pth', '../datasets/sample/overfit.h5'))
+    if self.visdom:
+      self.visdom.matplot(demo('../models/checkpoint.pth', '../datasets/sample/overfit.h5'))
 
   def test(self, model, test_loader):
     """
