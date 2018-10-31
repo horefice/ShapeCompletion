@@ -21,17 +21,18 @@ def main(argmodel, argfile, argcuda=False, timeit=False):
   model.load_state_dict(checkpoint['state_dict'])
   model.eval()
 
-  file = h5py.File(argfile, 'r')
-  inputs = torch.from_numpy(file['data'][()]).unsqueeze(0).float()
-  inputs[0,0].abs_().clamp_(max=3)
-  target = None
-  try:
-    target = file['target'][0]
-  except Exception as e:
-    pass
+  with h5py.File(argfile) as file:
+    inputs = torch.from_numpy(file['data'][()]).unsqueeze(0).float()
+    print(inputs.shape)
+    inputs[0,0].abs_().clamp_(max=3)
+    try:
+      target = file['target'][0]
+    except Exception as e:
+      target = None
 
   start = time.time()
-  result = model.forward(inputs)
+  with torch.no_grad():
+    result = model.forward(inputs)
 
   if timeit:
     print('Prediction function took {:.2f} ms'.format((time.time()-start)*1000.0))

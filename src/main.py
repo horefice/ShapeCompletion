@@ -42,8 +42,8 @@ parser.add_argument('-e', '--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--val-size', type=float, default=0.2, metavar='F',
                     help='val/(train+val) set size ratio (default: 0.2)')
-parser.add_argument('--save-interval', type=int, default=10, metavar='N',
-                    help='how many epochs to wait before saving (default: 10)')
+parser.add_argument('--save-interval', type=int, default=5, metavar='N',
+                    help='how many epochs to wait before saving (default: 5)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging (default: 10)')
 # --------------- Optimization options ---------------
