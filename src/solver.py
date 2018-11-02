@@ -142,7 +142,7 @@ class Solver(object):
     if self.visdom:
       self.visdom.matplot(demo('../models/checkpoint.pth', '../datasets/sample/overfit.h5'))
 
-  def test(self, model, test_loader, tolerance=1):
+  def test(self, model, test_loader, tolerance=0.5):
     """
     Test a given model with the provided data.
 

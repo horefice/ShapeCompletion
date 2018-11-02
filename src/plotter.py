@@ -4,10 +4,8 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser(description='Plotter')
-parser.add_argument('--saveDir', type=str, default='../models/',
-                    help='Directory from saved data')
-parser.add_argument('--fname', type=str, default='train_history.npz',
-                    help='Filename to plot')
+parser.add_argument('--file', type=str, default='../models/train_history.npz',
+                    help='Path to file for plotting')
 parser.add_argument('--title', type=str, default='',
                     help='Add info to title')
 parser.add_argument('-n', '--smooth', type=int, default=1,
@@ -16,8 +14,8 @@ args = parser.parse_args()
 
 class Plotter(object):
   """Loads and plots training history"""
-  def __init__(self, saveDir='../models/', fname='train_history.npz'):
-    self.path = os.path.join(saveDir, fname)
+  def __init__(self, path='../models/train_history.npz'):
+    self.path = path
     self._load_histories()
 
   def _load_histories(self):
@@ -42,14 +40,14 @@ class Plotter(object):
 
     x_epochs = np.arange(1,len(self.val_loss_history)+1)*len(self.train_loss_history)/len(self.val_loss_history)
 
-    cumsum = np.cumsum(np.insert(self.train_loss_history, 0, 0))
-    N = n_smoothed # Moving average size
-    smoothed = (cumsum[N:] - cumsum[:-N]) / float(N)
-
     ax1.set_yscale('log')
     ax1.plot(self.train_loss_history, label="train")
     ax1.plot(x_epochs,self.val_loss_history, label="validation", marker='x')
     if n_smoothed > 1:
+
+      cumsum = np.cumsum(np.insert(self.train_loss_history, 0, 0))
+      N = n_smoothed # Moving average size
+      smoothed = (cumsum[N:] - cumsum[:-N]) / float(N)
       ax1.plot(smoothed, label="train_smoothed")
     ax1.legend()
     ax1.set_ylabel('loss')
@@ -63,5 +61,5 @@ class Plotter(object):
     plt.show();
 
 if __name__ == '__main__':
-  plotter = Plotter(args.saveDir, args.fname)
+  plotter = Plotter(args.file)
   plotter.plot_histories(args.title, args.smooth)

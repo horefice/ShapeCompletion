@@ -51,35 +51,37 @@ def isosurface(M,v,step):
     
 
 def create_plot(inputs, result, target=None, title='Demo'):
-  f = plt.figure(num=1, figsize=(20,10))
-  f.suptitle(title)
+  fig = plt.figure(num=1, figsize=(20,10))
+  fig.suptitle(title)
 
-  ax1 = f.add_subplot(131, projection='3d')
-  ax1.set_title('Input')
-  verts, faces = isosurface(inputs,1,1)
-  ax1.plot_trisurf(verts[:, 0], verts[:,1], faces, verts[:, 2], lw=1, cmap="Spectral")
+  ax1 = fig.add_subplot(131, projection='3d')
+  ax1.set_title('Input', y=1.1)
+  verts1, faces1 = isosurface(inputs,1,1)
+  ax1.plot_trisurf(verts1[:, 0], verts1[:,1], faces1, verts1[:, 2], lw=1, cmap="Spectral")
   ax1.view_init(elev=150, azim=-120)
 
-  ax2 = f.add_subplot(132, projection='3d')
-  ax2.set_title('Prediction')
-  verts, faces = isosurface(result,1,1)
-  ax2.plot_trisurf(verts[:, 0], verts[:,1], faces, verts[:, 2], lw=1, cmap="Spectral")
+  ax2 = fig.add_subplot(132, projection='3d')
+  ax2.set_title('Prediction', y=1.1)
+  verts2, faces2 = isosurface(result,1,1)
+  ax2.plot_trisurf(verts2[:, 0], verts2[:,1], faces2, verts2[:, 2], lw=1, cmap="Spectral")
   ax2.view_init(elev=150, azim=-120)
 
   if target is not None:
-    ax3 = f.add_subplot(133, projection='3d')
-    ax3.set_title('Target')
-    verts, faces = isosurface(target,1,1)
-    ax3.plot_trisurf(verts[:, 0], verts[:,1], faces, verts[:, 2], lw=1, cmap="Spectral")
+    ax3 = fig.add_subplot(133, projection='3d')
+    ax3.set_title('Target', y=1.1)
+    verts3, faces3 = isosurface(target,1,1)
+    ax2.plot_trisurf(verts3[:, 0], verts3[:,1], faces3, verts3[:, 2], lw=1, cmap="Spectral", alpha=0.2)
+    ax3.plot_trisurf(verts2[:, 0], verts2[:,1], faces2, verts2[:, 2], lw=1, cmap="Spectral", alpha=0.2)
+    ax3.plot_trisurf(verts3[:, 0], verts3[:,1], faces3, verts3[:, 2], lw=1, cmap="Spectral")
     ax3.view_init(elev=150, azim=-120)
 
-  f.canvas.draw()
+  fig.canvas.draw()
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Demo')
   parser.add_argument('--model', type=str, default='../models/checkpoint.pth',
                       help='Trained model path')
-  parser.add_argument('--file', type=str, default='../datasets/sample/overfit.h5',
+  parser.add_argument('--input', type=str, default='../datasets/sample/overfit.h5',
                       help='Use file as input')
   parser.add_argument('--no-live', action='store_true', default=False,
                       help='disables live updates')
@@ -91,13 +93,13 @@ if __name__ == '__main__':
   plt.ion()
   plt.show(False)
 
-  main(args.model, args.file, args.cuda)
+  main(args.model, args.input, args.cuda)
   cached = os.stat(args.model).st_mtime
 
   while not args.no_live:
     stamp = os.stat(args.model).st_mtime
     if stamp != cached:
       cached = stamp
-      main(args.model, args.file, args.cuda)
+      main(args.model, args.input, args.cuda)
       
     plt.pause(5)

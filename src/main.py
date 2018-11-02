@@ -64,6 +64,7 @@ parser.add_argument('--retrain', action='store_true', default=False,
 ## SETUP
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
+args.device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
 args.saveDir = os.path.join('../models/', args.expID)
 utils.writeArgsFile(args,args.saveDir)
 
@@ -71,18 +72,16 @@ if args.retrain and not args.model:
   print("\n=> No model to retraining. Double-check arguments!")
   quit()
 
-device = torch.device('cpu')
 torch.manual_seed(args.seed)
 kwargs = {}
 if args.cuda:
-  device = torch.device('cuda:0')
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
   kwargs = {'num_workers': 1, 'pin_memory': True}
 
 if not os.path.exists(args.saveDir):
   os.makedirs(args.saveDir)
-print('\nSETUP COMPLETED.')
+print('SETUP COMPLETED.')
 
 
 ## LOAD DATASETS
@@ -101,7 +100,7 @@ print('\nLOADING NETWORK & SOLVER.')
 model = MyNet(log_transform=args.log_transform)
 checkpoint = {}
 if args.model:
-  checkpoint.update(torch.load(args.model, map_location=device))
+  checkpoint.update(torch.load(args.model, map_location=args.device))
   model.load_state_dict(checkpoint['state_dict'])
 print('Model params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 

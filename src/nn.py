@@ -99,6 +99,7 @@ class MyNet(MyNN):
     dec4 = self.dec4(d4)
 
     out = dec4
+
     if self.log_transform:
       out = out.abs().add(1).log()
 
