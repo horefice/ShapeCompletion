@@ -23,7 +23,6 @@ def main(argmodel, argfile, argcuda=False, timeit=False):
 
   with h5py.File(argfile) as file:
     inputs = torch.from_numpy(file['data'][()]).unsqueeze(0).float()
-    print(inputs.shape)
     inputs[0,0].abs_().clamp_(max=3)
     try:
       target = file['target'][0]

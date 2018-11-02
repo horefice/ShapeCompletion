@@ -85,14 +85,15 @@ class Solver(object):
         optim.zero_grad()
         outputs = model(inputs)
         if self.args['mask']:
-          outputs[inputs[:,[1]] == 1] = 0
-          targets[inputs[:,[1]] == 1] = 0
+          mask = inputs[:,[1]] == 1
+          outputs.masked_fill_(mask, 0)
+          targets.masked_fill_(mask, 0)
 
         loss = self.loss_func(outputs, targets)
         loss.backward()
         optim.step()
 
-        self.train_loss_history.append(loss.data.cpu().numpy())
+        self.train_loss_history.append(loss.item())
         if log_nth and i % log_nth == 0:
           last_log_nth_losses = self.train_loss_history[-log_nth:]
           train_loss = np.mean(last_log_nth_losses)
@@ -141,13 +142,14 @@ class Solver(object):
     if self.visdom:
       self.visdom.matplot(demo('../models/checkpoint.pth', '../datasets/sample/overfit.h5'))
 
-  def test(self, model, test_loader):
+  def test(self, model, test_loader, tolerance=1):
     """
     Test a given model with the provided data.
 
     Inputs:
     - model: model object initialized from a torch.nn.Module
     - test_loader: test data in torch.utils.data.DataLoader
+    - tolerance: acceptable percentage error used to compute test accuracy
     """
     test_acc = AverageMeter()
     test_loss = AverageMeter()
@@ -160,14 +162,15 @@ class Solver(object):
         
         outputs = model.forward(inputs)
         if self.args['mask']:
-          outputs[inputs[:,[1]] == 1] = 0
-          targets[inputs[:,[1]] == 1] = 0
+          mask = inputs[:,[1]] == 1
+          outputs.masked_fill_(mask, 0)
+          targets.masked_fill_(mask, 0)
 
         loss = self.loss_func(outputs, targets)
         test_loss.update(loss.item())
 
-        correct = (outputs == targets).sum().item()
-        test_acc.update(correct / np.prod(targets.size()))
+        correct = (torch.lt(torch.abs(torch.add(outputs, -targets)), tolerance) - mask).sum().item()
+        test_acc.update(correct / (np.prod(targets.size()) - mask.sum().item()))
 
     return test_acc.avg, test_loss.avg
 
