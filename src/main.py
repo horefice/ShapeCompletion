@@ -49,6 +49,12 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 # --------------- Optimization options ---------------
 parser.add_argument('--lr', '--learning-rate', type=float, default=1e-3, metavar='F',
                     help='learning rate (default: 1e-3)')
+parser.add_argument('--beta1', type=float, default=0.9, metavar='F',
+                    help='first momentum coefficient (default: 0.9)')
+parser.add_argument('--beta2', type=float, default=0.999, metavar='F',
+                    help='second momentum coefficient (default: 0.999)')
+parser.add_argument('--epsilon', type=float, default=1e-8, metavar='F',
+                    help='for numerical stability (default: 1e-8)')
 # --------------- Model options ---------------
 parser.add_argument('--model', type=str, default='', metavar='S',
                     help='use previously saved model')
@@ -76,16 +82,18 @@ if args.cuda:
 
 if not os.path.exists(args.saveDir):
   os.makedirs(args.saveDir)
+print('\nSETUP COMPLETED.')
 
 
 ## LOAD DATASETS
-print('\nDATASET INFO.')
+print('\nLOADING DATASET.')
 
 train_data = DataHandler(args.train_dir, truncation=args.truncation)
 test_data = DataHandler(args.test_dir, truncation=args.truncation)
 
 print('Train & val. size: {} x {}'.format(len(train_data), train_data[0][0].shape))
 print('Test size: {} x {}'.format(len(test_data), test_data[0][0].shape))
+print('LOADED.')
 
 ## LOAD MODEL & SOLVER
 print('\nLOADING NETWORK & SOLVER.')
@@ -99,7 +107,8 @@ model.to(device)
 print('Model params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
 solver_args = {k: vars(args)[k] for k in ['saveDir', 'visdom', 'mask', 'save_interval']}
-solver = Solver(optim_args={'lr': args.lr}, args=solver_args)
+optim_args = {'lr': args.lr, 'betas': (args.beta1, args.beta2), 'eps': args.epsilon}
+solver = Solver(optim_args=optim_args, args=solver_args)
 
 print('LOADED.')
 
@@ -134,3 +143,6 @@ test_acc, test_loss = solver.test(model, test_loader)
 
 print('Test accuracy: {:.2%}'.format(test_acc))
 print('Test loss: {:.3f}'.format(test_loss))
+print('FINISH.')
+
+print('\nTHE END.')

@@ -9,21 +9,18 @@ from utils import AverageMeter
 from viz import Viz
 
 class Solver(object):
-  default_adam_args = {"lr": 1e-4,
-                       "betas": (0.9, 0.999),
-                       "eps": 1e-8,
-                       "weight_decay": 0.0}
+  default_args = {'saveDir': '../models/',
+                  'visdom': False,
+                  'mask': True,
+                  'save_interval': 5}
 
   def __init__(self, optim=torch.optim.Adam, optim_args={},
-               loss_func=torch.nn.SmoothL1Loss(), args={'saveDir':'../models/',
-               'visdom':False, 'mask':False, 'save_interval': 10}):
-    optim_args_merged = self.default_adam_args.copy()
-    optim_args_merged.update(optim_args)
-    self.optim_args = optim_args_merged
+               loss_func=torch.nn.L1Loss(), args={}):
+    self.optim_args = optim_args
     self.optim = optim
     self.loss_func = loss_func
-    self.args = args
-    self.visdom = Viz() if args['visdom'] else False
+    self.args = dict(self.default_args, **args)
+    self.visdom = Viz() if self.args['visdom'] else False
     self._reset_history()
 
   def train(self, model, train_loader, val_loader, num_epochs=10, log_nth=0,
@@ -39,7 +36,7 @@ class Solver(object):
     - log_nth: log training accuracy and loss every nth iteration
     - checkpoint: object used to resume training from a checkpoint
     """
-    optim = self.optim(filter(lambda p: p.requires_grad,model.parameters()),
+    optim = self.optim(filter(lambda p: p.requires_grad, model.parameters()),
                        **self.optim_args)
     scheduler = torch.optim.lr_scheduler.StepLR(optim, step_size=20, gamma=.5)
     
@@ -52,6 +49,7 @@ class Solver(object):
       start_epoch = checkpoint['epoch']
       best_val_acc = checkpoint['best_val_acc']
       optim.load_state_dict(checkpoint['optimizer'])
+      scheduler.load_state_dict(checkpoint['scheduler'])
       self._load_history()
       print("=> Loaded checkpoint (epoch {:d})".format(checkpoint['epoch']))
 
@@ -75,6 +73,7 @@ class Solver(object):
     for epoch in range(start_epoch, num_epochs):
       # TRAINING
       model.train()
+      scheduler.step() # Reduce LR progressively
       train_loss = 0
 
       for i, (inputs, targets) in enumerate(train_loader, 1):
@@ -123,23 +122,20 @@ class Solver(object):
         is_best = val_acc >= best_val_acc
         best_val_acc = max(val_acc,best_val_acc)
 
-        # Reduce LR progressively
-        if scheduler:
-          scheduler.step(val_acc)
 
         if log_nth:
           print('[Epoch {:d}/{:d}] VAL acc/loss: {:.2%}/{:.3f}'.format(epoch + 1,
                                                                       num_epochs,
                                                                       val_acc,
                                                                       val_loss))
-      
       # do checkpointing
       if self.args['save_interval'] and (epoch+1) % self.args['save_interval'] == 0:
         self._save_checkpoint({
           'epoch': epoch + 1,
-          'state_dict': model.state_dict(),
           'best_val_acc': best_val_acc,
-          'optimizer' : optim.state_dict(),
+          'state_dict': model.state_dict(),
+          'optimizer': optim.state_dict(),
+          'scheduler': scheduler.state_dict()
         }, is_best)
 
     if self.visdom:
@@ -169,11 +165,11 @@ class Solver(object):
 
         loss = self.loss_func(outputs, targets)
         test_loss.update(loss.item())
-        #test_acc.update((outputs == targets).sum().item())
 
-    test_acc = float(test_acc.avg)
-    test_loss = float(test_loss.avg)
-    return test_acc, test_loss
+        correct = (outputs == targets).sum().item()
+        test_acc.update(correct / np.prod(targets.size()))
+
+    return test_acc.avg, test_loss.avg
 
   def _save_checkpoint(self, state, is_best, fname='checkpoint.pth'):
     """
