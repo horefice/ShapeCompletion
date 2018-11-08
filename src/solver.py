@@ -66,7 +66,7 @@ class Solver(object):
     #   [Iteration 800/4800] TRAIN loss: 1.409                             #
     #   [Iteration 900/4800] TRAIN loss: 1.374                             #
     #   [Epoch 1/5] TRAIN   loss: 0.560/1.374                              #
-    #   [Epoch 1/5] VAL acc/loss: 53.90%/1.310                              #
+    #   [Epoch 1/5] VAL acc/loss: 53.90%/1.310                             #
     #   ...                                                                #
     ########################################################################
 
@@ -77,10 +77,10 @@ class Solver(object):
       train_loss = 0
 
       for i, (inputs, targets) in enumerate(train_loader, 1):
+        inputs, targets = inputs.to(device), targets.to(device)
+
         if model.log_transform:
           targets = targets.abs().add(1).log()
-
-        inputs, targets = inputs.to(device), targets.to(device)
 
         optim.zero_grad()
         outputs = model(inputs)
@@ -159,8 +159,11 @@ class Solver(object):
     with torch.no_grad():
       for inputs, targets in test_loader:
         inputs, targets = inputs.to(device), targets.to(device)
+
+        if model.log_transform:
+          targets = targets.abs().add(1).log()
         
-        outputs = model.forward(inputs)
+        outputs = model(inputs)
         if self.args['mask']:
           mask = inputs[:,[1]] == 1
           outputs.masked_fill_(mask, 0)

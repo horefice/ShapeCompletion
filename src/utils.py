@@ -20,6 +20,29 @@ class AverageMeter(object):
     self.count += n
     self.avg = self.sum / self.count
 
+class IndexTracker(object):
+  def __init__(self, ax, X):
+    self.ax = ax
+
+    self.X = X
+    rows, cols, self.slices = X.shape
+    self.ind = self.slices//2
+
+    self.im = ax.imshow(self.X[:, :, self.ind])
+    self.update()
+
+  def onscroll(self, event):
+    if event.button == 'up':
+        self.ind = (self.ind + 1) % self.slices
+    elif event.button == 'down':
+        self.ind = (self.ind - 1) % self.slices
+    self.update()
+
+  def update(self):
+    self.im.set_data(self.X[:, :, self.ind])
+    self.ax.set_ylabel('slice %s' % self.ind)
+    self.im.axes.figure.canvas.draw()
+
 def writeArgsFile(args,saveDir):
   os.makedirs(saveDir, exist_ok=True)
   args_list = dict((name, getattr(args, name)) for name in dir(args)
@@ -29,3 +52,17 @@ def writeArgsFile(args,saveDir):
     opt_file.write('\n==> Args ('+datetime.datetime.now().isoformat()+'):\n')
     for k, v in sorted(args_list.items()):
        opt_file.write('  {}: {}\n'.format(str(k), str(v)))
+
+def get_random_idx(seed=1, len_samples=10000, samples=0):
+  indices = list(range(len_samples))
+  split = int(np.floor(0.2 * len_samples))
+
+  np.random.seed(seed)
+  np.random.shuffle(indices)
+
+  train_idx, val_idx = indices[split:], indices[:split]
+
+  if samples == 0:
+    return train_idx, val_idx
+
+  return train_idx[:samples], val_idx[:samples]

@@ -4,7 +4,7 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser(description='Plotter')
-parser.add_argument('--file', type=str, default='../models/train_history.npz',
+parser.add_argument('--input', type=str, default='../models/train_history.npz',
                     help='Path to file for plotting')
 parser.add_argument('--title', type=str, default='',
                     help='Add info to title')
@@ -35,8 +35,8 @@ class Plotter(object):
     Inputs:
     - extra_title: extra string to be appended to plot's title
     """
-    f, (ax1, ax2) = plt.subplots(1, 2)
-    f.suptitle('Training histories ' + extra_title)
+    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
+    f.suptitle('Training history ' + extra_title)
 
     x_epochs = np.arange(1,len(self.val_loss_history)+1)*len(self.train_loss_history)/len(self.val_loss_history)
 
@@ -61,5 +61,5 @@ class Plotter(object):
     plt.show();
 
 if __name__ == '__main__':
-  plotter = Plotter(args.file)
+  plotter = Plotter(args.input)
   plotter.plot_histories(args.title, args.smooth)
