@@ -52,6 +52,14 @@ class Solver(object):
       scheduler.load_state_dict(checkpoint['scheduler'])
       self._load_history()
       print("=> Loaded checkpoint (epoch {:d})".format(checkpoint['epoch']))
+    else:
+      self._save_checkpoint({
+        'epoch': start_epoch,
+        'best_val_acc': best_val_acc,
+        'state_dict': model.state_dict(),
+        'optimizer': optim.state_dict(),
+        'scheduler': scheduler.state_dict()
+      }, is_best)
 
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
 
@@ -73,7 +81,7 @@ class Solver(object):
     for epoch in range(start_epoch, num_epochs):
       # TRAINING
       model.train()
-      scheduler.step() # Reduce LR progressively
+      scheduler.step()
       train_loss = 0
 
       for i, (inputs, targets) in enumerate(train_loader, 1):
@@ -142,7 +150,7 @@ class Solver(object):
     if self.visdom:
       self.visdom.matplot(demo('../models/checkpoint.pth', '../datasets/sample/overfit.h5'))
 
-  def test(self, model, test_loader, tolerance=0.5):
+  def test(self, model, test_loader, tolerance=1):
     """
     Test a given model with the provided data.
 
@@ -162,6 +170,7 @@ class Solver(object):
 
         if model.log_transform:
           targets = targets.abs().add(1).log()
+          tolerance = np.log(tolerance+1)
         
         outputs = model(inputs)
         if self.args['mask']:
@@ -172,6 +181,7 @@ class Solver(object):
         loss = self.loss_func(outputs, targets)
         test_loss.update(loss.item())
 
+        # L2 approach
         correct = (torch.lt(torch.abs(torch.add(outputs, -targets)), tolerance) - mask).sum().item()
         test_acc.update(correct / (np.prod(targets.size()) - mask.sum().item()))
 

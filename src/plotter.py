@@ -48,7 +48,7 @@ class Plotter(object):
       cumsum = np.cumsum(np.insert(self.train_loss_history, 0, 0))
       N = n_smoothed # Moving average size
       smoothed = (cumsum[N:] - cumsum[:-N]) / float(N)
-      ax1.plot(smoothed, label="train_smoothed")
+      ax1.plot(np.arange(n_smoothed-1,len(self.train_loss_history)), smoothed, label="train_smoothed")
     ax1.legend()
     ax1.set_ylabel('loss')
     ax1.set_xlabel('batch')

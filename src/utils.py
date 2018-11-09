@@ -21,6 +21,7 @@ class AverageMeter(object):
     self.avg = self.sum / self.count
 
 class IndexTracker(object):
+  """Plot 3D arrays as 2D images with scrollable slice selector"""
   def __init__(self, ax, X):
     self.ax = ax
 
