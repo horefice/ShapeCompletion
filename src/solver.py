@@ -182,8 +182,17 @@ class Solver(object):
         test_loss.update(loss.item())
 
         # L2 approach
-        correct = (torch.lt(torch.abs(torch.add(outputs, -targets)), tolerance) - mask).sum().item()
-        test_acc.update(correct / (np.prod(targets.size()) - mask.sum().item()))
+        #correct = (torch.lt(torch.abs(torch.add(outputs, -targets)), tolerance) - mask).sum().item()
+        #test_acc.update(correct / (np.prod(targets.size()) - mask.sum().item()))
+
+        # Intersection over Union approach
+        t_d = torch.lt(targets, tolerance) - mask
+        p_d = torch.lt(outputs, tolerance) - mask
+        intersection = torch.eq(t_d.mul(p_d), 1).sum().item()
+        union = torch.gt(t_d.add(p_d), 0).sum().item()
+        eps = 1e-8
+        test_acc.update((intersection+eps) / (union+eps))
+
 
     return test_acc.avg, test_loss.avg
 

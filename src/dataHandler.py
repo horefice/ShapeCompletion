@@ -10,15 +10,18 @@ class DataHandler(Dataset):
   def __init__(self, path, truncation=3):
     super(DataHandler, self).__init__()
     self.truncation = truncation
-    self.data = []
-    self.target = []
+    self.path = []
+    self.size = []
 
     for root, dirs, files in os.walk(path):
       for file in files:
         if file.endswith('.h5'):
-          h5_file = h5py.File(os.path.join(root,file), 'r')
-          self.data = np.array(h5_file['data']) if len(self.data) == 0 else np.concatenate((self.data, np.array(h5_file['data'])))
-          self.target = np.array(h5_file['target']) if len(self.target) == 0 else np.concatenate((self.target, np.array(h5_file['target'])))
+          path = os.path.join(root,file)
+          self.path.append(path)
+
+          with h5py.File(path) as h5_file:
+            self.size.append(h5_file['data'][()].shape[0])
+    self.size = np.cumsum(self.size)
 
   def __getitem__(self, key):
     if isinstance(key, slice):
@@ -36,13 +39,16 @@ class DataHandler(Dataset):
       raise TypeError("Invalid argument type.")
 
   def __len__(self):
-    return len(self.data)
+    return self.size[-1]
 
   def get_item_from_index(self, index):
-    to_tensor = transforms.ToTensor()
-    tsdf = torch.from_numpy(self.data[index]).float()
-    tsdf[0].abs_().clamp_(max=self.truncation)
-    target = torch.from_numpy(self.target[index]).clamp(max=self.truncation).float()
+    file_idx = next(i for i,v in enumerate(self.size) if v > index)
+    index = index - self.size[file_idx]
+
+    with h5py.File(self.path[file_idx]) as h5_file:
+      tsdf = torch.from_numpy(h5_file['data'][index]).float()
+      tsdf[0].abs_().clamp_(max=self.truncation)
+      target = torch.from_numpy(h5_file['target'][index]).clamp(max=self.truncation).float()
 
     return tsdf, target
 

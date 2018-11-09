@@ -41,14 +41,14 @@ class Plotter(object):
     x_epochs = np.arange(1,len(self.val_loss_history)+1)*len(self.train_loss_history)/len(self.val_loss_history)
 
     ax1.set_yscale('log')
-    ax1.plot(self.train_loss_history, label="train")
+    ax1.plot(np.arange(1,len(self.train_loss_history)+1), self.train_loss_history, label="train")
     ax1.plot(x_epochs,self.val_loss_history, label="validation", marker='x')
     if n_smoothed > 1:
 
       cumsum = np.cumsum(np.insert(self.train_loss_history, 0, 0))
       N = n_smoothed # Moving average size
       smoothed = (cumsum[N:] - cumsum[:-N]) / float(N)
-      ax1.plot(np.arange(n_smoothed-1,len(self.train_loss_history)), smoothed, label="train_smoothed")
+      ax1.plot(np.arange(n_smoothed,len(smoothed)+n_smoothed), smoothed, label="train_smoothed")
     ax1.legend()
     ax1.set_ylabel('loss')
     ax1.set_xlabel('batch')

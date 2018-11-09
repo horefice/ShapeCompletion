@@ -74,7 +74,7 @@ kwargs = {}
 if args.cuda:
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
-  kwargs = {'num_workers': 1, 'pin_memory': True}
+  kwargs = {'num_workers': 4, 'pin_memory': True}
 
 if not os.path.exists(args.saveDir):
   os.makedirs(args.saveDir)
