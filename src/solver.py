@@ -5,8 +5,7 @@ import shutil
 import torch
 
 from demo import main as demo
-from utils import AverageMeter
-from viz import Viz
+from utils import AverageMeter, Viz
 
 class Solver(object):
   default_args = {'saveDir': '../models/',
@@ -138,7 +137,8 @@ class Solver(object):
                                                                       val_acc,
                                                                       val_loss))
       # do checkpointing
-      if self.args['save_interval'] and (epoch+1) % self.args['save_interval'] == 0:
+      if (self.args['save_interval'] and (epoch+1) % self.args['save_interval'] == 0) \
+        or epoch+1==num_epochs:
         self._save_checkpoint({
           'epoch': epoch + 1,
           'best_val_acc': best_val_acc,
@@ -150,14 +150,14 @@ class Solver(object):
     if self.visdom:
       self.visdom.matplot(demo('../models/checkpoint.pth', '../datasets/sample/overfit.h5'))
 
-  def test(self, model, test_loader, tolerance=1):
+  def test(self, model, test_loader, ROI=1):
     """
     Test a given model with the provided data.
 
     Inputs:
     - model: model object initialized from a torch.nn.Module
     - test_loader: test data in torch.utils.data.DataLoader
-    - tolerance: acceptable percentage error used to compute test accuracy
+    - ROI: region of interest in voxel distance for evaluation metric
     """
     test_acc = AverageMeter()
     test_loss = AverageMeter()
@@ -170,7 +170,7 @@ class Solver(object):
 
         if model.log_transform:
           targets = targets.abs().add(1).log()
-          tolerance = np.log(tolerance+1)
+          ROI = np.log(ROI+1)
         
         outputs = model(inputs)
         if self.args['mask']:
@@ -181,18 +181,12 @@ class Solver(object):
         loss = self.loss_func(outputs, targets)
         test_loss.update(loss.item())
 
-        # L2 approach
-        #correct = (torch.lt(torch.abs(torch.add(outputs, -targets)), tolerance) - mask).sum().item()
-        #test_acc.update(correct / (np.prod(targets.size()) - mask.sum().item()))
-
         # Intersection over Union approach
-        t_d = torch.lt(targets, tolerance) - mask
-        p_d = torch.lt(outputs, tolerance) - mask
+        t_d = torch.lt(targets, ROI) - mask
+        p_d = torch.lt(outputs, ROI) - mask
         intersection = torch.eq(t_d.mul(p_d), 1).sum().item()
         union = torch.gt(t_d.add(p_d), 0).sum().item()
-        eps = 1e-8
-        test_acc.update((intersection+eps) / (union+eps))
-
+        test_acc.update((intersection+1e-8) / (union+1e-8))
 
     return test_acc.avg, test_loss.avg
 

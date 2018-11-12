@@ -20,7 +20,7 @@ class DataHandler(Dataset):
           self.path.append(path)
 
           with h5py.File(path) as h5_file:
-            self.size.append(h5_file['data'][()].shape[0])
+            self.size.append(h5_file['data'].shape[0])
     self.size = np.cumsum(self.size)
 
   def __getitem__(self, key):
