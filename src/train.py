@@ -85,7 +85,7 @@ if args.model:
   model.load_state_dict(checkpoint['state_dict'])
 print('Model params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
-solver_args = {k: vars(args)[k] for k in ['saveDir', 'visdom', 'mask', 'save_interval']}
+solver_args = {k: vars(args)[k] for k in ['saveDir', 'visdom', 'mask']}
 optim_args = {'lr': args.lr, 'betas': (args.beta1, args.beta2), 'eps': args.epsilon}
 solver = Solver(optim_args=optim_args, args=solver_args)
 
@@ -107,7 +107,7 @@ val_loader = torch.utils.data.DataLoader(train_data,
                                         batch_size=args.batch_size,
                                         **kwargs)
 solver.train(model, train_loader, val_loader, log_nth=args.log_interval,
-            num_epochs=args.epochs, checkpoint=checkpoint)
+            save_nth=args.save_interval, num_epochs=args.epochs, checkpoint=checkpoint)
 print('FINISH.')
 
 print('\nTHE END.')
