@@ -19,7 +19,7 @@ class DataHandler(Dataset):
 
     for root, _, files in os.walk(path):
       for file in files:
-        if file.endswith('15.h5'):
+        if file.endswith('.h5'):
           path = os.path.join(root,file)
           self.files.append(path)
 

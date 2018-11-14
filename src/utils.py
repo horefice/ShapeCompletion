@@ -84,6 +84,8 @@ def isosurface(M,v,step):
   """
   returns vertices and faces from the isosurface of value v of M, subsetting M with the steps argument
   """
+  from skimage import measure
+
   sel = np.arange(0,np.shape(M)[0],step)
   verts, faces, _, _ = measure.marching_cubes_lewiner(M[np.ix_(sel,sel,sel)], v, spacing=(1.0, 1.0, 1.0))
   
