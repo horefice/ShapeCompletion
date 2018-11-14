@@ -72,8 +72,7 @@ print('SETUP COMPLETED.')
 print('\nLOADING DATASET.')
 
 train_data = DataHandler(args.train_dir, truncation=args.truncation)
-
-print('Train & val. size: {} x {}'.format(len(train_data), train_data[0][0].shape))
+print('Train & val. size: {} x {}'.format(len(train_data), train_data.shape))
 print('LOADED.')
 
 ## LOAD MODEL & SOLVER

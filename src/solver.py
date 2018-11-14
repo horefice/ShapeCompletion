@@ -1,8 +1,7 @@
 import numpy as np
-import sys
+import torch
 import os
 import shutil
-import torch
 
 from demo import main as demo
 from utils import AverageMeter, Viz
@@ -10,8 +9,7 @@ from utils import AverageMeter, Viz
 class Solver(object):
   default_args = {'saveDir': '../models/',
                   'visdom': False,
-                  'mask': True,
-                  'save_interval': 5}
+                  'mask': True}
 
   def __init__(self, optim=torch.optim.Adam, optim_args={},
                loss_func=torch.nn.L1Loss(), args={}):
@@ -23,7 +21,7 @@ class Solver(object):
     self._reset_history()
 
   def train(self, model, train_loader, val_loader, num_epochs=10, log_nth=0,
-            checkpoint={}):
+            save_nth=0, checkpoint={}):
     """
     Train a given model with the provided data.
 
@@ -76,7 +74,6 @@ class Solver(object):
     #   [Epoch 1/5] VAL acc/loss: 53.90%/1.310                             #
     #   ...                                                                #
     ########################################################################
-
     for epoch in range(start_epoch, num_epochs):
       # TRAINING
       model.train()
@@ -137,8 +134,7 @@ class Solver(object):
                                                                       val_acc,
                                                                       val_loss))
       # do checkpointing
-      if (self.args['save_interval'] and (epoch+1) % self.args['save_interval'] == 0) \
-        or epoch+1==num_epochs:
+      if (save_nth and (epoch+1) % save_nth == 0) or (epoch+1) == num_epochs:
         self._save_checkpoint({
           'epoch': epoch + 1,
           'best_val_acc': best_val_acc,

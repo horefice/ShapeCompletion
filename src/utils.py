@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+import visdom
 import datetime
 import os
 
@@ -22,7 +22,6 @@ class AverageMeter(object):
 
 class Viz(object):
   """Handles the Visdom connection and plots"""
-  import visdom
 
   def __init__(self):
     self.viz = visdom.Visdom(port=8099)
@@ -81,6 +80,16 @@ def writeArgsFile(args,saveDir):
     for k, v in sorted(args_list.items()):
        opt_file.write('  {}: {}\n'.format(str(k), str(v)))
 
+def isosurface(M,v,step):
+  """
+  returns vertices and faces from the isosurface of value v of M, subsetting M with the steps argument
+  """
+  sel = np.arange(0,np.shape(M)[0],step)
+  verts, faces, _, _ = measure.marching_cubes_lewiner(M[np.ix_(sel,sel,sel)], v, spacing=(1.0, 1.0, 1.0))
+  
+  return verts, faces
+
+'''
 def get_random_idx(seed=1, len_samples=10000, samples=0):
   indices = list(range(len_samples))
   split = int(np.floor(0.2 * len_samples))
@@ -94,3 +103,4 @@ def get_random_idx(seed=1, len_samples=10000, samples=0):
     return train_idx, val_idx
 
   return train_idx[:samples], val_idx[:samples]
+'''

@@ -4,23 +4,32 @@ import h5py
 import os
 from torchvision import transforms
 from torch.utils.data.dataset import Dataset
-from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data.sampler import Sampler
 
 class DataHandler(Dataset):
   def __init__(self, path, truncation=3):
     super(DataHandler, self).__init__()
     self.truncation = truncation
-    self.path = []
+    self.file_idx = -1
+    self.data = None
+    self.target = None
+    self.shape = None
+    self.files = []
     self.size = []
 
-    for root, dirs, files in os.walk(path):
+    for root, _, files in os.walk(path):
       for file in files:
-        if file.endswith('.h5'):
+        if file.endswith('15.h5'):
           path = os.path.join(root,file)
-          self.path.append(path)
+          self.files.append(path)
 
           with h5py.File(path) as h5_file:
-            self.size.append(h5_file['data'].shape[0])
+            self.size.append(len(h5_file['data']))
+
+            if self.shape is None:
+              self.shape = h5_file['data'].shape[1:]
+            elif self.shape != h5_file['data'].shape[1:]:
+              raise ValueError("Invalid dataset shape across files")
     self.size = np.cumsum(self.size)
 
   def __getitem__(self, key):
@@ -43,12 +52,18 @@ class DataHandler(Dataset):
 
   def get_item_from_index(self, index):
     file_idx = next(i for i,v in enumerate(self.size) if v > index)
+
+    if self.file_idx != file_idx:
+      self.file_idx = file_idx
+      h5_file = h5py.File(self.files[self.file_idx], 'r', libver='latest', swmr=True)
+      self.data = torch.from_numpy(h5_file['data'][()])
+      self.target = torch.from_numpy(h5_file['target'][()])
+
     index = index - self.size[file_idx]
 
-    with h5py.File(self.path[file_idx]) as h5_file:
-      tsdf = torch.from_numpy(h5_file['data'][index]).float()
-      tsdf[0].abs_().clamp_(max=self.truncation)
-      target = torch.from_numpy(h5_file['target'][index]).clamp(max=self.truncation).float()
+    tsdf = self.data[index].float()
+    tsdf[0].abs_().clamp_(max=self.truncation)
+    target = self.target[index].clamp(max=self.truncation).float()
 
     return tsdf, target
 
@@ -58,11 +73,49 @@ class DataHandler(Dataset):
     split = int(np.floor(val_size * num_samples))
 
     if shuffle:
+      # Shuffle indices
       np.random.seed(seed)
       np.random.shuffle(indices)
 
-    train_idx, val_idx = indices[split:], indices[:split]
-    train_sampler = SubsetRandomSampler(train_idx)
-    val_sampler = SubsetRandomSampler(val_idx)
+      # Shuffle groups
+      groups = list(range(len(self.size)))
+      np.random.shuffle(groups)
+
+      # Undo cumsum for size
+      group_size = self.size.copy()
+      group_size[1:] -= group_size[:-1]
+
+      # New cumsum size after shuffle
+      size = np.cumsum([group_size[group] for group in groups])
+      size = np.insert(size,0,0)
+
+      # Initilize mapping and indices
+      mapping = {self.size[v]: size[i] for i,v in enumerate(groups)}
+      new_indices = [0] * num_samples
+
+      # Loop through indices to find to which group it belongs to 
+      # and assign its value to the new arraz based on the mapping
+      for index, value in enumerate(indices):
+        group_id = next(i for i,v in enumerate(self.size) if v > value)
+        new_indices[mapping[self.size[group_id]]] = indices[index]
+        mapping[self.size[group_id]] += 1
+    else:
+      new_indices = indices
+
+    # Split into training and validation
+    train_idx, val_idx = new_indices[:split], new_indices[split:]
+
+    train_sampler = SubsetSequentialSampler(train_idx)
+    val_sampler = SubsetSequentialSampler(val_idx)
 
     return (train_sampler, val_sampler)
+
+class SubsetSequentialSampler(Sampler):
+  def __init__(self, indices):
+    self.indices = indices
+
+  def __iter__(self):
+    return (self.indices[i] for i in range(len(self.indices)))
+
+  def __len__(self):
+    return len(self.indices)

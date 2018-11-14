@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from skimage import measure
 from mpl_toolkits.mplot3d import Axes3D
 from nn import MyNet
-from utils import IndexTracker
+from utils import IndexTracker, isosurface
 
 idx = [0,12,34,61]
 
@@ -46,15 +46,6 @@ def main(argmodel, argfile, argcuda=False, argslicer=False, n_samples=1, timeit=
 
     (plot_3d if not argslicer else plot_slicer)(inputs.data.cpu().numpy()[i,0], result.data.cpu().numpy()[i,0], target,
               title='Demo {:d} - Epoch {:d}'.format(i, checkpoint['epoch']), scale_down=(n_samples+1)//2)
-
-def isosurface(M,v,step):
-    """
-    returns vertices and faces from the isosurface of value v of M, subsetting M with the steps argument
-    """
-    sel = np.arange(0,np.shape(M)[0],step)
-    verts, faces, _, _ = measure.marching_cubes_lewiner(M[np.ix_(sel,sel,sel)], v, spacing=(1.0, 1.0, 1.0))
-
-    return verts, faces
     
 def plot_3d(inputs, result, target=None, title='Demo', scale_down=1):
   fig = plt.figure(title.partition("-")[0], figsize=(20/scale_down,10/scale_down))
@@ -127,10 +118,11 @@ if __name__ == '__main__':
   main(args.model, args.input, args.cuda, args.slicer, args.n_samples)
   cached = os.stat(args.model).st_mtime
 
-  while True:
+  while not args.no_live:
     stamp = os.stat(args.model).st_mtime
-    if stamp != cached and not args.no_live:
+    if stamp != cached:
       cached = stamp
       main(args.model, args.input, args.cuda, args.slicer, args.n_samples)
       
     plt.pause(8)
+  plt.show()
