@@ -76,7 +76,7 @@ def writeArgsFile(args,saveDir):
                 if not name.startswith('_'))
   file_name = os.path.join(saveDir, 'args.txt')
   with open(file_name, 'a') as opt_file:
-    opt_file.write('\n==> Args ('+datetime.datetime.now().isoformat()+'):\n')
+    opt_file.write('\n==> Args ('+datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")+'):\n')
     for k, v in sorted(args_list.items()):
        opt_file.write('  {}: {}\n'.format(str(k), str(v)))
 
@@ -90,19 +90,3 @@ def isosurface(M,v,step):
   verts, faces, _, _ = measure.marching_cubes_lewiner(M[np.ix_(sel,sel,sel)], v, spacing=(1.0, 1.0, 1.0))
   
   return verts, faces
-
-'''
-def get_random_idx(seed=1, len_samples=10000, samples=0):
-  indices = list(range(len_samples))
-  split = int(np.floor(0.2 * len_samples))
-
-  np.random.seed(seed)
-  np.random.shuffle(indices)
-
-  train_idx, val_idx = indices[split:], indices[:split]
-
-  if samples == 0:
-    return train_idx, val_idx
-
-  return train_idx[:samples], val_idx[:samples]
-'''

@@ -12,7 +12,7 @@ class Solver(object):
                   'mask': True}
 
   def __init__(self, optim=torch.optim.Adam, optim_args={},
-               loss_func=torch.nn.L1Loss(), args={}):
+               loss_func=torch.nn.SmoothL1Loss(), args={}):
     self.optim_args = optim_args
     self.optim = optim
     self.loss_func = loss_func
@@ -177,12 +177,15 @@ class Solver(object):
         loss = self.loss_func(outputs, targets)
         test_loss.update(loss.item())
 
+        '''
         # Intersection over Union approach
         t_d = torch.lt(targets, ROI) - mask
         p_d = torch.lt(outputs, ROI) - mask
         intersection = torch.eq(t_d.mul(p_d), 1).sum().item()
         union = torch.gt(t_d.add(p_d), 0).sum().item()
-        test_acc.update((intersection+1e-8) / (union+1e-8))
+        acc = (intersection+1e-8) / (union+1e-8)
+        '''
+        test_acc.update(0)
 
     return test_acc.avg, test_loss.avg
 
