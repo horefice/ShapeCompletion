@@ -101,7 +101,7 @@ class Solver(object):
         if log_nth and i % log_nth == 0:
           last_log_nth_losses = self.train_loss_history[-log_nth:]
           train_loss = np.mean(last_log_nth_losses)
-          print('[Iteration {:d}/{:d}] TRAIN loss: {:.3f}'
+          print('[Iteration {:d}/{:d}] TRAIN loss: {:.2e}'
                 .format(i + epoch * iter_per_epoch,
                   iter_per_epoch * num_epochs,
                   train_loss))
@@ -113,7 +113,7 @@ class Solver(object):
                                     type_upd="append")
 
       if log_nth:
-        print('[Epoch {:d}/{:d}] TRAIN   loss: {:.3f}'.format(epoch + 1,
+        print('[Epoch {:d}/{:d}] TRAIN   loss: {:.2e}'.format(epoch + 1,
                                                               num_epochs,
                                                               train_loss))
 
@@ -129,7 +129,7 @@ class Solver(object):
 
 
         if log_nth:
-          print('[Epoch {:d}/{:d}] VAL acc/loss: {:.2%}/{:.3f}'.format(epoch + 1,
+          print('[Epoch {:d}/{:d}] VAL acc/loss: {:.2%}/{:.2e}'.format(epoch + 1,
                                                                       num_epochs,
                                                                       val_acc,
                                                                       val_loss))

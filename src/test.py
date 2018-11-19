@@ -81,7 +81,7 @@ test_loader = torch.utils.data.DataLoader(test_data,
 test_acc, test_loss = solver.test(model, test_loader)
 
 print('Test accuracy: {:.2%}'.format(test_acc))
-print('Test loss: {:.3f}'.format(test_loss))
+print('Test loss: {:.2e}'.format(test_loss))
 print('FINISH.')
 
 print('\nTHE END.')
