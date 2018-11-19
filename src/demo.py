@@ -11,12 +11,12 @@ from mpl_toolkits.mplot3d import Axes3D
 from nn import MyNet
 from utils import IndexTracker, isosurface
 
-def main(argmodel, argfile, argcuda=False, n_samples=1, cb=None, timeit=False):
+def main(argmodel, argfile, argcuda=True, n_samples=1, cb=None, timeit=False):
   model = MyNet()
-  device = torch.device("cuda:0" if argcuda else "cpu")
+  device = torch.device("cuda:0" if argcuda and torch.cuda.is_available() else "cpu")
 
   checkpoint = torch.load(argmodel, map_location=device)
-  model.load_state_dict(checkpoint['state_dict'])
+  model.load_state_dict(checkpoint['model'])
   model.eval()
 
   with h5py.File(argfile) as file:
@@ -90,9 +90,9 @@ if __name__ == '__main__':
   parser.add_argument('--no-cuda', action='store_true', default=False,
                       help='disables CUDA')
   args = parser.parse_args()
-  args.cuda = not args.no_cuda and torch.cuda.is_available()
+  cuda = not args.no_cuda
 
-  main(args.model, args.input, args.cuda, args.n_samples)
+  main(args.model, args.input, cuda, args.n_samples)
 
   if args.no_plot:
     quit()
@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     if stamp != cached:
       cached = stamp
-      main(args.model, args.input, args.cuda, args.n_samples)
+      main(args.model, args.input, cuda, args.n_samples)
 
     plt.pause(8)
 

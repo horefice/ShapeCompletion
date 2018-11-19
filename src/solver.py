@@ -53,7 +53,7 @@ class Solver(object):
       self._save_checkpoint({
         'epoch': start_epoch,
         'best_val_acc': best_val_acc,
-        'state_dict': model.state_dict(),
+        'model': model.state_dict(),
         'optimizer': optim.state_dict(),
         'scheduler': scheduler.state_dict()
       }, is_best)
@@ -138,13 +138,10 @@ class Solver(object):
         self._save_checkpoint({
           'epoch': epoch + 1,
           'best_val_acc': best_val_acc,
-          'state_dict': model.state_dict(),
+          'model': model.state_dict(),
           'optimizer': optim.state_dict(),
           'scheduler': scheduler.state_dict()
         }, is_best)
-
-    if self.visdom:
-      self.visdom.matplot(demo('../models/checkpoint.pth', '../datasets/sample/overfit.h5'))
 
   def test(self, model, test_loader, ROI=1):
     """
@@ -198,7 +195,9 @@ class Solver(object):
     torch.save(state, path)
     self._save_history()
     if is_best:
-      return #shutil.copyfile(path, os.path.join(self.args['saveDir'], 'model_best.pth'))
+      #shutil.copyfile(path, os.path.join(self.args['saveDir'], 'model_best.pth'))
+      demo(path, '../datasets/test/test100.h5', n_samples=30)
+      demo(path, '../datasets/train/train_shape_voxel_data0.h5', n_samples=30)
 
   def _reset_history(self):
     """

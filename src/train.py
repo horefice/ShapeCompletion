@@ -67,7 +67,7 @@ print('Seed: {:d}'.format(args.seed))
 if args.cuda:
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
-  kwargs = {'num_workers': 0, 'pin_memory': True}
+  kwargs = {'num_workers': 4, 'pin_memory': True}
 print('Cuda: {}'.format(args.cuda))
 
 ## LOAD DATASETS
@@ -89,7 +89,7 @@ model = MyNet(log_transform=args.log_transform)
 checkpoint = {}
 if args.model:
   checkpoint.update(torch.load(args.model, map_location=args.device))
-  model.load_state_dict(checkpoint['state_dict'])
+  model.load_state_dict(checkpoint['model'])
 print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
 solver_args = {k: vars(args)[k] for k in ['saveDir', 'visdom', 'mask']}
