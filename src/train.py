@@ -21,8 +21,8 @@ parser.add_argument('--no-cuda', action='store_true', default=False,
 parser.add_argument('--seed', type=int, default=1, metavar='N',
                     help='random seed (default: 1)')
 # --------------- Training options ---------------
-parser.add_argument('-b', '--batch-size', type=int, default=4, metavar='N',
-                    help='input batch size for training (default: 4)')
+parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N',
+                    help='input batch size for training (default: 64)')
 parser.add_argument('-e', '--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--val-size', type=float, default=0.2, metavar='F',
@@ -45,7 +45,7 @@ parser.add_argument('--epsilon', type=float, default=1e-8, metavar='F',
 # --------------- Model options ---------------
 parser.add_argument('--model', type=str, default='', metavar='S',
                     help='use previously saved model')
-parser.add_argument('--truncation', type=int, default=3, metavar='N',
+parser.add_argument('--truncation', type=float, default=3.0, metavar='N',
                     help='truncation value for distance field (default: 3)')
 parser.add_argument('--log-transform', type=bool, default=True, metavar='B',
                     help='use log tranformation')
@@ -53,6 +53,7 @@ parser.add_argument('--mask', type=bool, default=True, metavar='B',
                     help='mask out known values')
 
 ## SETUP
+print('SETUP')
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 args.device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
@@ -61,18 +62,24 @@ writeArgsFile(args,args.saveDir)
 
 torch.manual_seed(args.seed)
 kwargs = {}
+print('Seed: {:d}'.format(args.seed))
+
 if args.cuda:
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
-  kwargs = {'num_workers': 4, 'pin_memory': True}
-
-print('SETUP COMPLETED.')
+  kwargs = {'num_workers': 0, 'pin_memory': True}
+print('Cuda: {}'.format(args.cuda))
 
 ## LOAD DATASETS
-print('\nLOADING DATASET.')
+print('\nLOADING DATASET & SAMPLER.')
 
 train_data = DataHandler(args.train_dir, truncation=args.truncation)
-print('Train & val. size: {} x {}'.format(len(train_data), train_data.shape))
+print('Dataset truncation at: {:.1f}'.format(args.truncation))
+
+train_sampler, val_sampler = train_data.subdivide_dataset(args.val_size,
+                                                         shuffle=True,
+                                                         seed=args.seed)
+print('Dataset length: {:d} ({:d}/{:d})'.format(len(train_data), len(train_sampler), len(val_sampler)))
 print('LOADED.')
 
 ## LOAD MODEL & SOLVER
@@ -83,20 +90,17 @@ checkpoint = {}
 if args.model:
   checkpoint.update(torch.load(args.model, map_location=args.device))
   model.load_state_dict(checkpoint['state_dict'])
-print('Model params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
+print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
 solver_args = {k: vars(args)[k] for k in ['saveDir', 'visdom', 'mask']}
 optim_args = {'lr': args.lr, 'betas': (args.beta1, args.beta2), 'eps': args.epsilon}
 solver = Solver(optim_args=optim_args, args=solver_args)
-
+print('Solver learning rate: {:.2e}'.format(args.lr))
+print('Solver masked loss: {}'.format(args.mask))
 print('LOADED.')
 
 ## TRAIN
-print('\nTRAINING.')
-
-train_sampler, val_sampler = train_data.subdivide_dataset(args.val_size,
-                                                         shuffle=True,
-                                                         seed=args.seed)
+print('\nTRAINING (batch size {:d}).'.format(args.batch_size))
 
 train_loader = torch.utils.data.DataLoader(train_data,
                                           sampler=train_sampler,
