@@ -12,7 +12,7 @@ class MyNN(nn.Module):
     """
     Initialize a new network.
     """
-    super(MyNN, self).__init__()
+    super().__init__()
 
   def forward(self, x):
     """
@@ -61,7 +61,7 @@ class MyNet(MyNN):
   """
 
   def __init__(self, n_features=80, log_transform=True):
-    super(MyNet, self).__init__()
+    super().__init__()
     self.log_transform = log_transform
 
     self.enc1 = nn.Conv3d(2, n_features, 4, stride=2, padding=1)

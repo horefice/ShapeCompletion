@@ -79,7 +79,8 @@ print('Dataset truncation at: {:.1f}'.format(args.truncation))
 train_sampler, val_sampler = train_data.subdivide_dataset(args.val_size,
                                                          shuffle=True,
                                                          seed=args.seed)
-print('Dataset length: {:d} ({:d}/{:d})'.format(len(train_data), len(train_sampler), len(val_sampler)))
+print('Dataset length: {:d} ({:d}/{:d})'.format(len(train_data), len(train_sampler),
+                                                len(val_sampler)))
 print('LOADED.')
 
 ## LOAD MODEL & SOLVER
