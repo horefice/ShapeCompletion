@@ -63,6 +63,7 @@ print('\nLOADING NETWORK & SOLVER.')
 model = MyNet(log_transform=args.log_transform)
 checkpoint = torch.load(args.model, map_location=args.device)
 model.load_state_dict(checkpoint['model'])
+model.to(args.device)
 print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
 solver_args = {k: vars(args)[k] for k in ['saveDir', 'mask']}
