@@ -1,8 +1,6 @@
 import numpy as np
 import torch
-import h5py
 import os
-from torchvision import transforms
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
 

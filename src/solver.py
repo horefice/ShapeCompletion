@@ -70,7 +70,7 @@ class Solver(object):
     #   [Iteration 700/4800] TRAIN loss: 1.452                             #
     #   [Iteration 800/4800] TRAIN loss: 1.409                             #
     #   [Iteration 900/4800] TRAIN loss: 1.374                             #
-    #   [Epoch 1/5] TRAIN   loss: 0.560/1.374                              #
+    #   [Epoch 1/5] TRAIN   loss: 1.374                                    #
     #   [Epoch 1/5] VAL acc/loss: 53.90%/1.310                             #
     #   ...                                                                #
     ########################################################################
@@ -196,8 +196,8 @@ class Solver(object):
     self._save_history()
     if is_best:
       #shutil.copyfile(path, os.path.join(self.args['saveDir'], 'model_best.pth'))
-      demo(path, '../datasets/test/test100.h5', n_samples=30)
-      demo(path, '../datasets/train/train_shape_voxel_data0.h5', n_samples=30)
+      demo(path, '../datasets/test/test100.h5', n_samples=15)
+      #demo(path, '../datasets/train/train_shape_voxel_data0.h5', n_samples=10)
 
   def _reset_history(self):
     """

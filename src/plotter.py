@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
-import os
 
 parser = argparse.ArgumentParser(description='Plotter')
 parser.add_argument('--input', type=str, default='../models/train_history.npz',

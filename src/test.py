@@ -1,7 +1,5 @@
-import numpy as np
 import argparse
 import torch
-import datetime
 import os
 
 from nn import MyNet
@@ -36,8 +34,8 @@ parser.add_argument('--mask', type=bool, default=True, metavar='B',
 ## SETUP
 print('SETUP')
 args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
-args.device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+use_cuda = not args.no_cuda and torch.cuda.is_available()
+args.device = torch.device('cuda:0') if use_cuda else torch.device('cpu')
 args.saveDir = os.path.join('../models/', args.expID)
 writeArgsFile(args,args.saveDir)
 
@@ -45,11 +43,11 @@ torch.manual_seed(args.seed)
 kwargs = {}
 print('Seed: {:d}'.format(args.seed))
 
-if args.cuda:
+if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
-  kwargs = {'num_workers': 0, 'pin_memory': True}
-print('Cuda: {}'.format(args.cuda))
+  kwargs = {'num_workers': 4, 'pin_memory': True}
+print('Cuda: {}'.format(use_cuda))
 
 ## LOAD DATASETS
 print('\nLOADING DATASET.')

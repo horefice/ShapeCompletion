@@ -73,7 +73,7 @@ class MyNet(MyNN):
     self.enc4 = nn.Conv3d(4*n_features, 8*n_features, 4, stride=1, padding=0)
     self.bn4 = nn.BatchNorm3d(8*n_features)
 
-    self.dec1 = nn.ConvTranspose3d(2*8*n_features, 4*n_features, 4, stride=1, padding=0)
+    self.dec1 = nn.ConvTranspose3d(8*n_features, 4*n_features, 4, stride=1, padding=0)
     self.dbn1 = nn.BatchNorm3d(4*n_features)
     self.dec2 = nn.ConvTranspose3d(2*4*n_features, 2*n_features, 4, stride=2, padding=1)
     self.dbn2 = nn.BatchNorm3d(2*n_features)
@@ -87,9 +87,7 @@ class MyNet(MyNN):
     enc3 = F.leaky_relu(self.bn3(self.enc3(enc2)))
     enc4 = F.leaky_relu(self.bn4(self.enc4(enc3)))
 
-    bottleneck = enc4
-
-    d1 = torch.cat([bottleneck,enc4], dim=1)
+    d1 = enc4#torch.cat([bottleneck,enc4], dim=1)
     dec1 = F.leaky_relu(self.dbn1(self.dec1(d1)))
     d2 = torch.cat([dec1,enc3], dim=1)
     dec2 = F.leaky_relu(self.dbn2(self.dec2(d2)))

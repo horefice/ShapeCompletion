@@ -16,7 +16,7 @@ parser.add_argument('--input', type=str, default='../datasets/sample/overfit.h5'
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='disables CUDA')
 args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
+use_cuda = not args.no_cuda and torch.cuda.is_available()
 
 def plot_slicer(inputs, result, target=None, **kargs):
   fig = plt.figure('Slicer', figsize=(20,10))
@@ -42,4 +42,4 @@ def plot_slicer(inputs, result, target=None, **kargs):
   plt.show()
   return 0
 
-main(args.model, args.input, args.cuda, 1, cb=plot_slicer)
+main(args.model, args.input, use_cuda, n_samples=1, cb=plot_slicer)

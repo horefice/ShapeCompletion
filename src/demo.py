@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import argparse
-import time
 import os
 import h5py
 import matplotlib.pyplot as plt
@@ -11,9 +10,9 @@ from mpl_toolkits.mplot3d import Axes3D
 from nn import MyNet
 from utils import IndexTracker, isosurface
 
-def main(argmodel, argfile, argcuda=True, n_samples=1, cb=None, timeit=False):
+def main(argmodel, argfile, use_cuda=True, n_samples=1, cb=None):
   model = MyNet()
-  device = torch.device("cuda:0" if argcuda and torch.cuda.is_available() else "cpu")
+  device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
 
   checkpoint = torch.load(argmodel, map_location=device)
   model.load_state_dict(checkpoint['model'])
@@ -30,12 +29,8 @@ def main(argmodel, argfile, argcuda=True, n_samples=1, cb=None, timeit=False):
     except Exception as e:
       targets = None
 
-  start = time.time()
   with torch.no_grad():
     result = model(inputs)
-
-  if timeit:
-    print('Prediction function took {:.2f} ms'.format((time.time()-start)*1000.0))
 
   for n,i in enumerate(range(n_samples)):
     target = targets
@@ -80,30 +75,29 @@ if __name__ == '__main__':
                       help='Trained model path')
   parser.add_argument('--input', type=str, default='../datasets/sample/overfit.h5',
                       help='Use file as input')
-  group = parser.add_mutually_exclusive_group()
-  group.add_argument('--live', action='store_true', default=False,
-                      help='enables live updates')
-  group.add_argument('--no-plot', action='store_true', default=False,
-                      help='disables plots (only saves)')
   parser.add_argument('-n', '--n-samples', type=int, default=1,
                       help='plot n samples as figure')
+  parser.add_argument('--no-live', action='store_true', default=False,
+                      help='disables live updates')
+  parser.add_argument('--no-plot', action='store_true', default=False,
+                      help='disables plots (only saves)')
   parser.add_argument('--no-cuda', action='store_true', default=False,
                       help='disables CUDA')
   args = parser.parse_args()
-  cuda = not args.no_cuda
+  use_cuda = not args.no_cuda
 
-  main(args.model, args.input, cuda, args.n_samples)
+  main(args.model, args.input, use_cuda, args.n_samples)
 
   if args.no_plot:
     quit()
 
   cached = os.stat(args.model).st_mtime
-  while args.live:
+  while not args.no_live:
     stamp = os.stat(args.model).st_mtime
 
     if stamp != cached:
       cached = stamp
-      main(args.model, args.input, cuda, args.n_samples)
+      main(args.model, args.input, use_cuda, args.n_samples)
 
     plt.pause(8)
 
