@@ -7,7 +7,6 @@ from datetime import datetime
 from utils import IndexTracker
 from demo import main
 
-
 parser = argparse.ArgumentParser(description='Slicer')
 parser.add_argument('--model', type=str, default='../models/checkpoint.pth',
                     help='Trained model path')

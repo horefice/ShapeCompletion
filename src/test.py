@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import torch
 import os
@@ -12,7 +13,7 @@ parser = argparse.ArgumentParser(description='MyNet evaluation script')
 # --------------- General options ---------------
 parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
                     help='Experiment ID')
-parser.add_argument('--test-dir', type=str, default='../datasets/test/', metavar='S',
+parser.add_argument('--dir', type=str, default='../datasets/test/', metavar='S',
                     help='folder for test files')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='disables CUDA')
@@ -36,8 +37,8 @@ print('SETUP')
 args = parser.parse_args()
 use_cuda = not args.no_cuda and torch.cuda.is_available()
 args.device = torch.device('cuda:0') if use_cuda else torch.device('cpu')
-args.saveDir = os.path.join('../models/', args.expID)
-writeArgsFile(args,args.saveDir)
+saveDir = os.path.join('../models/', args.expID)
+writeArgsFile(args,saveDir)
 
 torch.manual_seed(args.seed)
 kwargs = {}
@@ -47,12 +48,12 @@ if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
   kwargs = {'num_workers': 4, 'pin_memory': True}
-print('Cuda: {}'.format(use_cuda))
+print('Device: {}'.format(args.device))
 
 ## LOAD DATASETS
 print('\nLOADING DATASET.')
 
-test_data = DataHandler(args.test_dir, truncation=args.truncation)
+test_data = DataHandler(args.dir, truncation=args.truncation)
 print('Dataset truncation at: {:.1f}'.format(args.truncation))
 print('Dataset length: {:d}'.format(len(test_data)))
 print('LOADED.')
@@ -63,7 +64,6 @@ print('\nLOADING NETWORK & SOLVER.')
 model = MyNet(log_transform=args.log_transform)
 checkpoint = torch.load(args.model, map_location=args.device)
 model.load_state_dict(checkpoint['model'])
-model.to(args.device)
 print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
 solver_args = {k: vars(args)[k] for k in ['saveDir', 'mask']}

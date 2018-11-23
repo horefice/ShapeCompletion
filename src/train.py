@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import torch
 import os
@@ -12,12 +13,12 @@ parser = argparse.ArgumentParser(description='MyNet training script')
 # --------------- General options ---------------
 parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
                     help='Experiment ID')
-parser.add_argument('--train-dir', type=str, default='../datasets/train/', metavar='S',
+parser.add_argument('--dir', type=str, default='../datasets/train/', metavar='S',
                     help='folder for training files')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='disables CUDA')
 parser.add_argument('--seed', type=int, default=1, metavar='N',
                     help='random seed (default: 1)')
+parser.add_argument('--no-cuda', action='store_true', default=False,
+                    help='disables CUDA')
 # --------------- Training options ---------------
 parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
@@ -55,8 +56,8 @@ print('SETUP')
 args = parser.parse_args()
 use_cuda = not args.no_cuda and torch.cuda.is_available()
 args.device = torch.device('cuda:0') if use_cuda else torch.device('cpu')
-args.saveDir = os.path.join('../models/', args.expID)
-writeArgsFile(args,args.saveDir)
+saveDir = os.path.join('../models/', args.expID)
+writeArgsFile(args,saveDir)
 
 torch.manual_seed(args.seed)
 kwargs = {}
@@ -66,12 +67,12 @@ if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
   kwargs = {'num_workers': 4, 'pin_memory': True}
-print('Cuda: {}'.format(use_cuda))
+print('Device: {}'.format(args.device))
 
 ## LOAD DATASETS
 print('\nLOADING DATASET & SAMPLER.')
 
-train_data = DataHandler(args.train_dir, truncation=args.truncation)
+train_data = DataHandler(args.dir, truncation=args.truncation)
 print('Dataset truncation at: {:.1f}'.format(args.truncation))
 
 train_sampler, val_sampler = train_data.subdivide_dataset(args.val_size,
@@ -87,12 +88,12 @@ print('\nLOADING NETWORK & SOLVER.')
 model = MyNet(log_transform=args.log_transform)
 checkpoint = {}
 if args.model:
-  checkpoint.update(torch.load(args.model, map_location=args.device))
+  checkpoint = torch.load(args.model, map_location=args.device)
   model.load_state_dict(checkpoint['model'])
 model.to(args.device)
 print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
-solver_args = {k: vars(args)[k] for k in ['saveDir', 'visdom', 'mask']}
+solver_args = {'saveDir': saveDir, 'mask': args.mask, 'visdom':args.visdom}
 optim_args = {'lr': args.lr, 'betas': (args.beta1, args.beta2), 'eps': args.epsilon}
 solver = Solver(optim_args=optim_args, args=solver_args)
 print('Solver learning rate: {:.2e}'.format(args.lr))

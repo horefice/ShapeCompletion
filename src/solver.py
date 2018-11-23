@@ -39,7 +39,7 @@ class Solver(object):
     
     iter_per_epoch = len(train_loader)
     start_epoch = 0
-    best_val_acc = 0.0
+    best_val_acc = -1
     is_best = False
 
     if len(checkpoint) > 0:
@@ -81,18 +81,20 @@ class Solver(object):
       train_loss = 0
 
       for i, (inputs, targets) in enumerate(train_loader, 1):
+        # Prepare data
         inputs, targets = inputs.to(device), targets.to(device)
-
         if model.log_transform:
           targets = targets.abs().add(1).log()
 
+        # Forward pass
         optim.zero_grad()
         outputs = model(inputs)
         if self.args['mask']:
-          mask = inputs[:,[1]] == 1
+          mask = inputs[:,[1]].eq(1)
           outputs.masked_fill_(mask, 0)
           targets.masked_fill_(mask, 0)
 
+        # Computes loss and backward pass
         loss = self.loss_func(outputs, targets)
         loss.backward()
         optim.step()
@@ -143,48 +145,41 @@ class Solver(object):
           'scheduler': scheduler.state_dict()
         }, is_best)
 
-  def test(self, model, test_loader, ROI=1):
+  def test(self, model, data_loader, with_acc=False):
     """
-    Test a given model with the provided data.
+    Computes the loss for a given model with the provided data.
 
     Inputs:
     - model: model object initialized from a torch.nn.Module
-    - test_loader: test data in torch.utils.data.DataLoader
-    - ROI: region of interest in voxel distance for evaluation metric
+    - data_loader: provided data in torch.utils.data.DataLoader
+    - with_acc: computes accuracy in addition to loss
     """
-    test_acc = AverageMeter()
     test_loss = AverageMeter()
+    test_acc = AverageMeter()
     model.eval()
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
 
     with torch.no_grad():
-      for inputs, targets in test_loader:
+      for inputs, targets in data_loader:
         inputs, targets = inputs.to(device), targets.to(device)
 
         if model.log_transform:
           targets = targets.abs().add(1).log()
-          ROI = np.log(ROI+1)
         
         outputs = model(inputs)
         if self.args['mask']:
-          mask = inputs[:,[1]] == 1
+          mask = inputs[:,[1]].eq(1)
           outputs.masked_fill_(mask, 0)
           targets.masked_fill_(mask, 0)
 
         loss = self.loss_func(outputs, targets)
         test_loss.update(loss.item())
 
-        '''
-        # Intersection over Union approach
-        t_d = torch.lt(targets, ROI) - mask
-        p_d = torch.lt(outputs, ROI) - mask
-        intersection = torch.eq(t_d.mul(p_d), 1).sum().item()
-        union = torch.gt(t_d.add(p_d), 0).sum().item()
-        acc = (intersection+1e-8) / (union+1e-8)
-        '''
-        test_acc.update(0)
+        if with_acc:
+          acc = 0
+          test_acc.update(acc)
 
-    return test_acc.avg, test_loss.avg
+    return (test_acc.avg if with_acc else -1), test_loss.avg
 
   def _save_checkpoint(self, state, is_best, fname='checkpoint.pth'):
     """
@@ -195,9 +190,8 @@ class Solver(object):
     torch.save(state, path)
     self._save_history()
     if is_best:
-      #shutil.copyfile(path, os.path.join(self.args['saveDir'], 'model_best.pth'))
       demo(path, '../datasets/test/test100.h5', n_samples=15)
-      #demo(path, '../datasets/train/train_shape_voxel_data0.h5', n_samples=10)
+      #shutil.copyfile(path, os.path.join(self.args['saveDir'], 'model_best.pth'))
 
   def _reset_history(self):
     """
