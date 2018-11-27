@@ -1,6 +1,7 @@
 import numpy as np
 import visdom
 import datetime
+import math
 import os
 
 class AverageMeter(object):
@@ -94,39 +95,32 @@ def isosurface(M, v, step):
   
   return verts, faces
 
-def get_areas(verts, faces):
+def get_areas_and_vectors(verts, faces):
   areas = []
-  for face in faces:
-    anchor = verts[face[0]]
-    v1 = anchor - verts[face[1]]
-    v2 = anchor - verts[face[2]]
+  anchor = verts[faces[:,0]]
+  v1 = anchor - verts[faces[:,1]]
+  v2 = anchor - verts[faces[:,2]]
 
-    cross = [v1[1]*v2[2]-v1[2]*v2[1], v1[2]*v2[0]-v1[0]*v2[2], v1[0]*v2[1]-v1[1]*v2[0]]
-    area = np.sqrt(cross[0]**2+cross[1]**2+cross[2]**2)/2
-    areas.append(area)
+  cross = np.cross(v1,v2)
+  area = np.linalg.norm(cross, axis=1)/2
 
-  return areas
+  return np.cumsum(area), [anchor,v1,v2]
 
-def choose_random_face(verts, faces):
-  areas = get_areas(verts, faces)
-  cumsum = np.cumsum(areas)
-  random_v = np.random.uniform(cumsum[-1])
-  random_i = np.searchsorted(cumsum,random_v)
+def choose_random_faces(areas, n=1):
+  random_v = np.random.uniform(areas[-1], size=(n,1))
+  random_i = [np.searchsorted(areas,v) for v in random_v]
 
-  return faces[random_i]
+  return random_i
 
-def sample_triangle_uniform(verts, face, n=1):
-  anchor = verts[face[0]]
-  v1 = verts[face[1]] - anchor
-  v2 = verts[face[2]] - anchor
+def sample_triangle_uniform(v, faces):
 
   samples = []
-  for _ in range(n):
+  for face in faces:
     a1=a2=1
     while a1+a2 > 1:
       a1 = np.random.uniform(0,1)
       a2 = np.random.uniform(0,1)
-    x = anchor + a1*v1 + a2*v2
+    x = v[0][face] + a1*v[1][face] + a2*v[2][face]
     samples.append(x)
 
   return samples
@@ -140,7 +134,7 @@ def compute_distance(samples, df):
 
   for v in interpolator(samples):
     if v is not None:
-      dist.update(v)
+      dist.update(np.asscalar(v))
 
   return dist.avg
 
@@ -165,11 +159,12 @@ def compute_l1_error(inputs, targets, n=1):
       continue
     #ax1.plot_trisurf(verts[:,0],verts[:,1],faces,verts[:,2], lw=1, cmap="Spectral")
     #plt.show()
-    for _ in range(n):
-      face = choose_random_face(verts, faces)
-      samples = sample_triangle_uniform(verts, face)
-      dist = compute_distance(samples, targets[i,0])
-      err.update(dist)
+
+    areas, v = get_areas_and_vectors(verts, faces)
+    random_faces = choose_random_faces(areas, n=n)
+    samples = sample_triangle_uniform(v, random_faces)
+    dists = compute_distance(samples, targets[i,0])
+    err.update(dists)
 
   if skipped > 1:
     print("Skipped samples due to lack of surfaces: {:d}".format(skipped))
