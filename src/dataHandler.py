@@ -13,7 +13,7 @@ class DataHandler(Dataset):
 
     for root, _, files in os.walk(path):
       for file in files:
-        if file.endswith('99.npy'):
+        if file.endswith('.npy'):
           self.files.append(os.path.join(root,file))
 
   def __getitem__(self, key):

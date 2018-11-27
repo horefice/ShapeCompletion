@@ -137,7 +137,7 @@ class Solver(object):
           'scheduler': scheduler.state_dict()
         })
 
-        demo(model, '../datasets/test/test100.h5', n_samples=15)
+        demo(model, '../datasets/test/test100.h5', epoch=epoch+1, n_samples=15)
 
   def test(self, model, data_loader):
     """

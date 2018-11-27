@@ -101,7 +101,8 @@ def get_areas(verts, faces):
     v1 = anchor - verts[face[1]]
     v2 = anchor - verts[face[2]]
 
-    area = np.linalg.norm(np.cross(v1,v2))/2
+    cross = [v1[1]*v2[2]-v1[2]*v2[1], v1[2]*v2[0]-v1[0]*v2[2], v1[0]*v2[1]-v1[1]*v2[0]]
+    area = np.sqrt(cross[0]**2+cross[1]**2+cross[2]**2)/2
     areas.append(area)
 
   return areas

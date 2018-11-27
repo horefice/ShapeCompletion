@@ -10,16 +10,21 @@ from mpl_toolkits.mplot3d import Axes3D
 from nn import MyNet
 from utils import IndexTracker, isosurface
 
-def main(argmodel, argfile, use_cuda=True, n_samples=1, cb=None):
+def main(argmodel, argfile, use_cuda=True, n_samples=1, epoch=0, cb=None):
   if isinstance(argmodel, str):
     model = MyNet()
-    device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
+    device = torch.device('cuda:0' if use_cuda and torch.cuda.is_available() else 'cpu')
 
     checkpoint = torch.load(argmodel, map_location=device)
     model.load_state_dict(checkpoint['model'])
+    model.to(device)
     model.eval()
   else:
     model = argmodel
+    device = torch.device('cuda:0' if model.is_cuda else 'cpu')
+
+  if epoch is 0 and checkpoint is not None:
+    epoch = checkpoint['epoch']
 
   with h5py.File(argfile) as file:
     inputs = torch.from_numpy(file['data'][()]).view(-1,2,32,32,32).float()
@@ -33,7 +38,7 @@ def main(argmodel, argfile, use_cuda=True, n_samples=1, cb=None):
       targets = None
 
   with torch.no_grad():
-    result = model(inputs)
+    result = model(inputs.to(device))
 
   for n,i in enumerate(range(n_samples)):
     target = targets
@@ -41,7 +46,7 @@ def main(argmodel, argfile, use_cuda=True, n_samples=1, cb=None):
       target = targets[i]
 
     (plot_3d if cb is None else cb)(inputs.data.cpu().numpy()[i,0], result.data.cpu().numpy()[i,0], target,
-              title='Demo - Epoch {:d}'.format(checkpoint['epoch']), n=n_samples, i=n)
+              title='Demo - Epoch {:d}'.format(epoch), n=n_samples, i=n)
 
   plt.savefig(datetime.utcnow().strftime("%Y-%m-%d_%H:%M:%S") +'.png')
     
