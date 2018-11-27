@@ -11,12 +11,15 @@ from nn import MyNet
 from utils import IndexTracker, isosurface
 
 def main(argmodel, argfile, use_cuda=True, n_samples=1, cb=None):
-  model = MyNet()
-  device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
+  if isinstance(argmodel, str):
+    model = MyNet()
+    device = torch.device("cuda:0" if use_cuda and torch.cuda.is_available() else "cpu")
 
-  checkpoint = torch.load(argmodel, map_location=device)
-  model.load_state_dict(checkpoint['model'])
-  model.eval()
+    checkpoint = torch.load(argmodel, map_location=device)
+    model.load_state_dict(checkpoint['model'])
+    model.eval()
+  else:
+    model = argmodel
 
   with h5py.File(argfile) as file:
     inputs = torch.from_numpy(file['data'][()]).view(-1,2,32,32,32).float()

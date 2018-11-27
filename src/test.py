@@ -6,7 +6,7 @@ import os
 from nn import MyNet
 from solver import Solver
 from dataHandler import DataHandler
-from utils import writeArgsFile
+from utils import writeArgsFile, compute_l1_error
 
 ## SETTINGS
 parser = argparse.ArgumentParser(description='MyNet evaluation script')
@@ -25,11 +25,11 @@ parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N',
 # --------------- Model options ---------------
 parser.add_argument('--model', type=str, default='../models/checkpoint.pth', metavar='S',
                     help='use previously saved model')
-parser.add_argument('--truncation', type=int, default=3, metavar='N',
+parser.add_argument('--truncation', type=float, default=2.5, metavar='F',
                     help='truncation value for distance field (default: 3)')
 parser.add_argument('--log-transform', type=bool, default=True, metavar='B',
                     help='use log tranformation')
-parser.add_argument('--mask', type=bool, default=True, metavar='B',
+parser.add_argument('--mask', type=bool, default=False, metavar='B',
                     help='mask out known values')
 
 ## SETUP
@@ -64,10 +64,10 @@ print('\nLOADING NETWORK & SOLVER.')
 model = MyNet(log_transform=args.log_transform)
 checkpoint = torch.load(args.model, map_location=args.device)
 model.load_state_dict(checkpoint['model'])
+model.to(args.device)
 print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
-solver_args = {k: vars(args)[k] for k in ['saveDir', 'mask']}
-solver = Solver(args=solver_args)
+solver = Solver(loss_func=compute_l1_error, args={'saveDir': saveDir, 'mask': args.mask})
 print('Solver masked loss: {}'.format(args.mask))
 print('LOADED.')
 
@@ -77,10 +77,9 @@ print('\nTESTING (batch size {:d}).'.format(args.batch_size))
 test_loader = torch.utils.data.DataLoader(test_data, 
                                           batch_size=args.batch_size,
                                           shuffle=False, **kwargs)
-test_acc, test_loss = solver.test(model, test_loader)
+test_err = solver.test(model, test_loader)
 
-print('Test accuracy: {:.2%}'.format(test_acc))
-print('Test loss: {:.2e}'.format(test_loss))
+print('Test accuracy: {:.3f}'.format(test_err))
 print('FINISH.')
 
 print('\nTHE END.')

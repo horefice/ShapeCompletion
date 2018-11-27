@@ -41,10 +41,16 @@ parser.add_argument('--beta2', type=float, default=0.999, metavar='F',
                     help='second momentum coefficient (default: 0.999)')
 parser.add_argument('--epsilon', type=float, default=1e-8, metavar='F',
                     help='for numerical stability (default: 1e-8)')
+parser.add_argument('--weight-decay', type=float, default=0, metavar='F',
+                    help='L2 penalty/regularization')
+parser.add_argument('--scheduler-step', type=int, default=20, metavar='N',
+                    help='period of learning rate decay')
+parser.add_argument('--scheduler-gamma', type=float, default=0.5, metavar='F',
+                    help='multiplicative factor of learning rate decay')
 # --------------- Model options ---------------
 parser.add_argument('--model', type=str, default='', metavar='S',
                     help='use previously saved model')
-parser.add_argument('--truncation', type=float, default=3.0, metavar='N',
+parser.add_argument('--truncation', type=float, default=3.0, metavar='F',
                     help='truncation value for distance field (default: 3)')
 parser.add_argument('--log-transform', type=bool, default=True, metavar='B',
                     help='use log tranformation')
@@ -80,6 +86,8 @@ train_sampler, val_sampler = train_data.subdivide_dataset(args.val_size,
                                                          seed=args.seed)
 print('Dataset length: {:d} ({:d}/{:d})'.format(len(train_data), len(train_sampler),
                                                 len(val_sampler)))
+print('Input size: {}'.format(list(train_data[0][0].size())))
+print('Target size: {}'.format(list(train_data[0][1].size())))
 print('LOADED.')
 
 ## LOAD MODEL & SOLVER
@@ -94,9 +102,11 @@ model.to(args.device)
 print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
 solver_args = {'saveDir': saveDir, 'mask': args.mask, 'visdom':args.visdom}
-optim_args = {'lr': args.lr, 'betas': (args.beta1, args.beta2), 'eps': args.epsilon}
-solver = Solver(optim_args=optim_args, args=solver_args)
-print('Solver learning rate: {:.2e}'.format(args.lr))
+optim_args = {'lr': args.lr, 'betas': (args.beta1, args.beta2), 'eps': args.epsilon, 'weight_decay': args.weight_decay}
+lrs_args = {'step_size': args.scheduler_step, 'gamma': args.scheduler_gamma}
+solver = Solver(optim_args=optim_args, lrs_args=lrs_args, args=solver_args)
+print('Solver learning rate: {:.1e}'.format(args.lr))
+print('Solver weight decay: {:.1e}'.format(args.weight_decay))
 print('Solver masked loss: {}'.format(args.mask))
 print('LOADED.')
 

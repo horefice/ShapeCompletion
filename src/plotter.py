@@ -1,15 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import argparse
-
-parser = argparse.ArgumentParser(description='Plotter')
-parser.add_argument('--input', type=str, default='../models/train_history.npz',
-                    help='Path to file for plotting')
-parser.add_argument('--title', type=str, default='',
-                    help='Add info to title')
-parser.add_argument('-n', '--smooth', type=int, default=1,
-                    help='Use n previous values to smooth curve')
-args = parser.parse_args()
 
 class Plotter(object):
   """Loads and plots training history"""
@@ -19,22 +9,22 @@ class Plotter(object):
 
   def _load_histories(self):
     """
-    Load training history with its parameters to self.path.
+    Loads training history with its parameters to self.path.
     """
     npzfile = np.load(self.path)
     self.train_loss_history = npzfile['train_loss_history']
-    self.val_acc_history = npzfile['val_acc_history']
     self.val_loss_history = npzfile['val_loss_history']
 
   def plot_histories(self, extra_title='', n_smoothed=1):
     """
-    Plot losses and accuracies from training and validation. Also plots a 
+    Plots losses from training and validation. Also plots a 
     smoothed curve for train_loss.
 
     Inputs:
     - extra_title: extra string to be appended to plot's title
+    - n_smoothed: moving average length for smoothed curve
     """
-    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
+    f, (ax1) = plt.subplots(1, 1, figsize=(20,10))
     f.suptitle('Training history ' + extra_title)
 
     x_epochs = np.arange(1,len(self.val_loss_history)+1)*len(self.train_loss_history)/len(self.val_loss_history)
@@ -52,13 +42,19 @@ class Plotter(object):
     ax1.set_ylabel('loss')
     ax1.set_xlabel('batch')
     
-    ax2.plot(np.arange(1,len(self.val_acc_history)+1),self.val_acc_history, label="validation", marker='x')
-    ax2.legend()
-    ax2.set_ylabel('accuracy')
-    ax2.set_xlabel('epoch')
-    
     plt.show();
 
 if __name__ == '__main__':
+  import argparse
+
+  parser = argparse.ArgumentParser(description='Plotter')
+  parser.add_argument('--input', type=str, default='../models/train_history.npz',
+                      help='Path to file for plotting')
+  parser.add_argument('--title', type=str, default='',
+                      help='Add info to title')
+  parser.add_argument('-n', '--smooth', type=int, default=1,
+                      help='Use n previous values to smooth curve')
+  args = parser.parse_args()
+
   plotter = Plotter(args.input)
   plotter.plot_histories(args.title, args.smooth)

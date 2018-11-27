@@ -12,9 +12,12 @@ class Solver(object):
                   'mask': True}
 
   def __init__(self, optim=torch.optim.Adam, optim_args={},
+               lrs=torch.optim.lr_scheduler.StepLR, lrs_args={},
                loss_func=torch.nn.SmoothL1Loss(), args={}):
     self.optim_args = optim_args
     self.optim = optim
+    self.lrs_args = lrs_args
+    self.lrs = lrs
     self.loss_func = loss_func
     self.args = dict(self.default_args, **args)
     self.visdom = Viz() if self.args['visdom'] else False
@@ -30,21 +33,19 @@ class Solver(object):
     - train_loader: train data in torch.utils.data.DataLoader
     - val_loader: val data in torch.utils.data.DataLoader
     - num_epochs: total number of training epochs
-    - log_nth: log training accuracy and loss every nth iteration
+    - log_nth: logs training accuracy and loss every nth iteration
+    - save_nth: saves current state every nth iteration
     - checkpoint: object used to resume training from a checkpoint
     """
     optim = self.optim(filter(lambda p: p.requires_grad, model.parameters()),
                        **self.optim_args)
-    scheduler = torch.optim.lr_scheduler.StepLR(optim, step_size=20, gamma=.5)
+    scheduler = self.lrs(optim, **self.lrs_args)
     
     iter_per_epoch = len(train_loader)
     start_epoch = 0
-    best_val_acc = -1
-    is_best = False
 
     if len(checkpoint) > 0:
       start_epoch = checkpoint['epoch']
-      best_val_acc = checkpoint['best_val_acc']
       optim.load_state_dict(checkpoint['optimizer'])
       scheduler.load_state_dict(checkpoint['scheduler'])
       self._load_history()
@@ -52,11 +53,10 @@ class Solver(object):
     else:
       self._save_checkpoint({
         'epoch': start_epoch,
-        'best_val_acc': best_val_acc,
         'model': model.state_dict(),
         'optimizer': optim.state_dict(),
         'scheduler': scheduler.state_dict()
-      }, is_best)
+      })
 
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
 
@@ -115,47 +115,39 @@ class Solver(object):
                                     type_upd="append")
 
       if log_nth:
-        print('[Epoch {:d}/{:d}] TRAIN   loss: {:.2e}'.format(epoch + 1,
+        print('[Epoch {:d}/{:d}] TRAIN loss: {:.2e}'.format(epoch + 1,
                                                               num_epochs,
                                                               train_loss))
 
       # VALIDATION
       if len(val_loader):
-        val_acc, val_loss = self.test(model, val_loader)
-        self.val_acc_history.append(val_acc)
+        val_loss = self.test(model, val_loader)
         self.val_loss_history.append(val_loss)
 
-        # Set best model to the one with highest validation set accuracy
-        is_best = val_acc >= best_val_acc
-        best_val_acc = max(val_acc,best_val_acc)
-
-
         if log_nth:
-          print('[Epoch {:d}/{:d}] VAL acc/loss: {:.2%}/{:.2e}'.format(epoch + 1,
-                                                                      num_epochs,
-                                                                      val_acc,
-                                                                      val_loss))
-      # do checkpointing
+          print('[Epoch {:d}/{:d}] VAL  loss: {:.2e}'.format(epoch + 1,
+                                                             num_epochs,
+                                                             val_loss))
+      # CHECKPOINT
       if (save_nth and (epoch+1) % save_nth == 0) or (epoch+1) == num_epochs:
         self._save_checkpoint({
           'epoch': epoch + 1,
-          'best_val_acc': best_val_acc,
           'model': model.state_dict(),
           'optimizer': optim.state_dict(),
           'scheduler': scheduler.state_dict()
-        }, is_best)
+        })
 
-  def test(self, model, data_loader, with_acc=False):
+        demo(model, '../datasets/test/test100.h5', n_samples=15)
+
+  def test(self, model, data_loader):
     """
     Computes the loss for a given model with the provided data.
 
     Inputs:
     - model: model object initialized from a torch.nn.Module
     - data_loader: provided data in torch.utils.data.DataLoader
-    - with_acc: computes accuracy in addition to loss
     """
     test_loss = AverageMeter()
-    test_acc = AverageMeter()
     model.eval()
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
 
@@ -175,46 +167,36 @@ class Solver(object):
         loss = self.loss_func(outputs, targets)
         test_loss.update(loss.item())
 
-        if with_acc:
-          acc = 0
-          test_acc.update(acc)
+    return test_loss.avg
 
-    return (test_acc.avg if with_acc else -1), test_loss.avg
-
-  def _save_checkpoint(self, state, is_best, fname='checkpoint.pth'):
+  def _save_checkpoint(self, state, fname='checkpoint.pth'):
     """
-    Save current state of training and trigger method to save training history.
+    Saves current state of training.
     """
     print('Saving at checkpoint...')
     path = os.path.join(self.args['saveDir'], fname)
     torch.save(state, path)
     self._save_history()
-    if is_best:
-      demo(path, '../datasets/test/test100.h5', n_samples=15)
-      #shutil.copyfile(path, os.path.join(self.args['saveDir'], 'model_best.pth'))
 
   def _reset_history(self):
     """
     Resets train and val histories.
     """
     self.train_loss_history = []
-    self.val_acc_history = []
     self.val_loss_history = []
 
   def _save_history(self, fname="train_history.npz"):
     """
-    Save training history. Conventionally the fname should end with "*.npz".
+    Saves training history. Conventionally the fname should end with "*.npz".
     """
     np.savez(os.path.join(self.args['saveDir'], fname),
             train_loss_history=self.train_loss_history,
-            val_loss_history=self.val_loss_history,
-            val_acc_history=self.val_acc_history)
+            val_loss_history=self.val_loss_history)
 
   def _load_history(self, fname="train_history.npz"):
     """
-    Load training history. Conventionally the fname should end with "*.npz".
+    Loads training history. Conventionally the fname should end with "*.npz".
     """
     npzfile = np.load(os.path.join(self.args['saveDir'], fname))
     self.train_loss_history = npzfile['train_loss_history'].tolist()
-    self.val_acc_history = npzfile['val_acc_history'].tolist()
     self.val_loss_history = npzfile['val_loss_history'].tolist()
