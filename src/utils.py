@@ -21,9 +21,6 @@ class AverageMeter(object):
     self.count += n
     self.avg = self.sum / self.count
 
-  def item(self):
-    return self.avg
-
 class Viz(object):
   """Handles the Visdom connection and plots"""
 
@@ -98,8 +95,8 @@ def isosurface(M, v, step):
 def get_areas_and_vectors(verts, faces):
   areas = []
   anchor = verts[faces[:,0]]
-  v1 = anchor - verts[faces[:,1]]
-  v2 = anchor - verts[faces[:,2]]
+  v1 = verts[faces[:,1]] - anchor
+  v2 = verts[faces[:,2]] - anchor
 
   cross = np.cross(v1,v2)
   area = np.linalg.norm(cross, axis=1)/2
@@ -169,4 +166,4 @@ def compute_l1_error(inputs, targets, n=1):
   if skipped > 1:
     print("Skipped samples due to lack of surfaces: {:d}".format(skipped))
 
-  return err
+  return err.avg

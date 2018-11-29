@@ -1,10 +1,9 @@
 import numpy as np
 import torch
 import os
-import shutil
 
 from demo import main as demo
-from utils import AverageMeter, Viz
+from utils import AverageMeter, Viz, compute_l1_error
 
 class Solver(object):
   default_args = {'saveDir': '../models/',
@@ -99,7 +98,7 @@ class Solver(object):
         loss.backward()
         optim.step()
 
-        self.train_loss_history.append(loss.item())
+        self.train_loss_history.append(float(loss))
         if log_nth and i % log_nth == 0:
           last_log_nth_losses = self.train_loss_history[-log_nth:]
           train_loss = np.mean(last_log_nth_losses)
@@ -114,20 +113,25 @@ class Solver(object):
                                     window=iter_plot,
                                     type_upd="append")
 
+      # Free up memory
+      del inputs, outputs, targets, mask, loss
+
       if log_nth:
-        print('[Epoch {:d}/{:d}] TRAIN loss: {:.2e}'.format(epoch + 1,
+        print('[Epoch {:d}/{:d}] TRAIN   loss: {:.2e}'.format(epoch + 1,
                                                               num_epochs,
                                                               train_loss))
 
       # VALIDATION
       if len(val_loader):
-        val_loss = self.test(model, val_loader)
+        val_err, val_loss = self.test(model, val_loader)
         self.val_loss_history.append(val_loss)
 
         if log_nth:
-          print('[Epoch {:d}/{:d}] VAL  loss: {:.2e}'.format(epoch + 1,
+          print('[Epoch {:d}/{:d}] VAL loss/err: {:.2e}/{:.3f}'.format(epoch + 1,
                                                              num_epochs,
-                                                             val_loss))
+                                                             val_loss,
+                                                             val_err))
+
       # CHECKPOINT
       if (save_nth and (epoch+1) % save_nth == 0) or (epoch+1) == num_epochs:
         self._save_checkpoint({
@@ -147,6 +151,7 @@ class Solver(object):
     - model: model object initialized from a torch.nn.Module
     - data_loader: provided data in torch.utils.data.DataLoader
     """
+    test_err = AverageMeter()
     test_loss = AverageMeter()
     model.eval()
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
@@ -165,9 +170,12 @@ class Solver(object):
           targets.masked_fill_(mask, 0)
 
         loss = self.loss_func(outputs, targets)
-        test_loss.update(loss.item())
+        test_loss.update(float(loss))
 
-    return test_loss.avg
+        err = compute_l1_error(outputs,targets)
+        test_err.update(float(err))
+
+    return test_err.avg, test_loss.avg
 
   def _save_checkpoint(self, state, fname='checkpoint.pth'):
     """

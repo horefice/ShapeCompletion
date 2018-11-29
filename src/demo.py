@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from mpl_toolkits.mplot3d import Axes3D
 from nn import MyNet
-from utils import IndexTracker, isosurface
+from utils import isosurface
 
 def main(argmodel, argfile, use_cuda=True, n_samples=1, epoch=0, cb=None):
   if isinstance(argmodel, str):
@@ -51,7 +51,7 @@ def main(argmodel, argfile, use_cuda=True, n_samples=1, epoch=0, cb=None):
   plt.savefig(datetime.utcnow().strftime("%Y-%m-%d_%H:%M:%S") +'.png')
     
 def plot_3d(inputs, result, target=None, title='Demo', n=1, i=1):
-  fig = plt.figure(title.partition("-")[0], figsize=(20,10*n))
+  fig = plt.figure(title.partition("-")[0], figsize=(16,6*n))
   fig.suptitle(title)
 
   ax1 = fig.add_subplot(n,3,3*i+1, projection='3d')

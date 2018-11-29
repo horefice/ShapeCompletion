@@ -87,8 +87,8 @@ class MyNet(MyNN):
     enc3 = F.leaky_relu(self.bn3(self.enc3(enc2)))
     enc4 = F.leaky_relu(self.bn4(self.enc4(enc3)))
 
-    d1 = enc4#torch.cat([bottleneck,enc4], dim=1)
-    dec1 = F.leaky_relu(self.dbn1(self.dec1(d1)))
+    #d1 = torch.cat([bottleneck,enc4], dim=1)
+    dec1 = F.leaky_relu(self.dbn1(self.dec1(enc4)))
     d2 = torch.cat([dec1,enc3], dim=1)
     dec2 = F.leaky_relu(self.dbn2(self.dec2(d2)))
     d3 = torch.cat([dec2,enc2], dim=1)

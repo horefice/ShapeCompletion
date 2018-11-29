@@ -47,7 +47,7 @@ print('Seed: {:d}'.format(args.seed))
 if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
-  kwargs = {'num_workers': 4, 'pin_memory': True}
+  kwargs = {'num_workers': 6, 'pin_memory': True}
 print('Device: {}'.format(args.device))
 
 ## LOAD DATASETS
@@ -77,7 +77,7 @@ print('\nTESTING (batch size {:d}).'.format(args.batch_size))
 test_loader = torch.utils.data.DataLoader(test_data, 
                                           batch_size=args.batch_size,
                                           shuffle=False, **kwargs)
-test_err = solver.test(model, test_loader)
+test_err, _ = solver.test(model, test_loader)
 
 print('Test accuracy: {:.3f}'.format(test_err))
 print('FINISH.')

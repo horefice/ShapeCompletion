@@ -72,7 +72,7 @@ print('Seed: {:d}'.format(args.seed))
 if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
-  kwargs = {'num_workers': 4, 'pin_memory': True}
+  kwargs = {'num_workers': 6, 'pin_memory': True}
 print('Device: {}'.format(args.device))
 
 ## LOAD DATASETS
