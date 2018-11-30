@@ -6,7 +6,7 @@ import os
 from nn import MyNet
 from solver import Solver
 from dataHandler import DataHandler
-from utils import writeArgsFile, compute_l1_error
+from utils import writeArgsFile
 
 ## SETTINGS
 parser = argparse.ArgumentParser(description='MyNet evaluation script')
@@ -29,7 +29,7 @@ parser.add_argument('--truncation', type=float, default=2.5, metavar='F',
                     help='truncation value for distance field (default: 3)')
 parser.add_argument('--log-transform', type=bool, default=True, metavar='B', 
                     help='uses log tranformation')
-parser.add_argument('--mask', type=bool, default=False, metavar='B', 
+parser.add_argument('--mask', type=bool, default=True, metavar='B', 
                     help='mask out known values')
 
 ## SETUP
@@ -56,6 +56,7 @@ print('\nLOADING DATASET.')
 test_data = DataHandler(args.dir, truncation=args.truncation)
 print('Dataset truncation at: {:.1f}'.format(args.truncation))
 print('Dataset length: {:d}'.format(len(test_data)))
+print('Batch size: {:d} x {}'.format(args.batch_size, list(test_data[0][0].size())))
 print('LOADED.')
 
 ## LOAD MODEL & SOLVER
@@ -67,19 +68,19 @@ model.load_state_dict(checkpoint['model'])
 model.to(args.device)
 print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
-solver = Solver(loss_func=compute_l1_error, args={'saveDir': saveDir, 'mask': args.mask})
+solver = Solver(loss_func=torch.nn.L1Loss(reduction='sum'), args={'saveDir': saveDir, 'mask': args.mask})
 print('Solver masked loss: {}'.format(args.mask))
 print('LOADED.')
 
 ## TEST
-print('\nTESTING (batch size {:d}).'.format(args.batch_size))
+print('\nTESTING.')
 
 test_loader = torch.utils.data.DataLoader(test_data, 
                                           batch_size=args.batch_size,
                                           shuffle=False, **kwargs)
-_, test_err = solver.test(model, test_loader)
 
-print('Test accuracy: {:.3f}'.format(test_err))
+test_err = solver.test(model, test_loader, progress_bar=True)
+print('Test error: {:.3e}'.format(test_err))
 print('FINISH.')
 
 print('\nTHE END.')

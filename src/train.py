@@ -63,6 +63,12 @@ args = parser.parse_args()
 use_cuda = not args.no_cuda and torch.cuda.is_available()
 args.device = torch.device('cuda:0') if use_cuda else torch.device('cpu')
 saveDir = os.path.join('../models/', args.expID)
+
+checkpoint_path = os.path.join(saveDir, "checkpoint.pth")
+if os.path.isfile(checkpoint_path):
+  x = input("[Warning]: Checkpoint detected! Resume training? [[y]/n] ")
+  if x.strip().casefold() in ['', 'y', 'yes']:
+    args.model = checkpoint_path
 writeArgsFile(args,saveDir)
 
 torch.manual_seed(args.seed)
@@ -86,8 +92,7 @@ train_sampler, val_sampler = train_data.subdivide_dataset(args.val_size,
                                                          seed=args.seed)
 print('Dataset length: {:d} ({:d}/{:d})'.format(len(train_data), len(train_sampler),
                                                 len(val_sampler)))
-print('Input size: {}'.format(list(train_data[0][0].size())))
-print('Target size: {}'.format(list(train_data[0][1].size())))
+print('Batch size: {:d} x {}'.format(args.batch_size, list(train_data[0][0].size())))
 print('LOADED.')
 
 ## LOAD MODEL & SOLVER
@@ -111,7 +116,7 @@ print('Solver masked loss: {}'.format(args.mask))
 print('LOADED.')
 
 ## TRAIN
-print('\nTRAINING (batch size {:d}).'.format(args.batch_size))
+print('\nTRAINING.')
 
 train_loader = torch.utils.data.DataLoader(train_data,
                                           sampler=train_sampler,

@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from nn import MyNet
 from utils import isosurface
 
-def main(argmodel, argfile, use_cuda=True, n_samples=1, epoch=0, cb=None):
+def main(argmodel, argfile, use_cuda=True, n_samples=1, epoch=0, savedir='', cb=None):
   if isinstance(argmodel, str):
     model = MyNet()
     device = torch.device('cuda:0' if use_cuda and torch.cuda.is_available() else 'cpu')
@@ -48,7 +48,7 @@ def main(argmodel, argfile, use_cuda=True, n_samples=1, epoch=0, cb=None):
     (plot_3d if cb is None else cb)(inputs.data.cpu().numpy()[i,0], result.data.cpu().numpy()[i,0], target,
               title='Demo - Epoch {:d}'.format(epoch), n=n_samples, i=n)
 
-  plt.savefig(datetime.utcnow().strftime("%Y-%m-%d_%H:%M:%S") +'.png')
+  plt.savefig(os.path.join(savedir, datetime.utcnow().strftime("%Y-%m-%d_%H:%M:%S") +'.png'))
     
 def plot_3d(inputs, result, target=None, title='Demo', n=1, i=1):
   fig = plt.figure(title.partition("-")[0], figsize=(16,6*n))

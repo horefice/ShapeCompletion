@@ -2,17 +2,19 @@ import numpy as np
 import torch
 import os
 
+from tqdm import tqdm
+
 from demo import main as demo
-from utils import AverageMeter, Viz, compute_l1_error
+from utils import AverageMeter, Viz
 
 class Solver(object):
   default_args = {'saveDir': '../models/',
                   'visdom': False,
-                  'mask': True}
+                  'mask': False}
 
   def __init__(self, optim=torch.optim.Adam, optim_args={},
                lrs=torch.optim.lr_scheduler.StepLR, lrs_args={},
-               loss_func=torch.nn.SmoothL1Loss(), args={}):
+               loss_func=torch.nn.SmoothL1Loss(reduction='sum'), args={}):
     self.optim_args = optim_args
     self.optim = optim
     self.lrs_args = lrs_args
@@ -69,15 +71,15 @@ class Solver(object):
     #   [Iteration 700/4800] TRAIN loss: 1.452                             #
     #   [Iteration 800/4800] TRAIN loss: 1.409                             #
     #   [Iteration 900/4800] TRAIN loss: 1.374                             #
-    #   [Epoch 1/5] TRAIN   loss: 1.374                                    #
-    #   [Epoch 1/5] VAL acc/loss: 53.90%/1.310                             #
+    #   [Epoch 1/5] TRAIN loss: 1.374                                      #
+    #   [Epoch 1/5] VAL   loss: 1.310                                      #
     #   ...                                                                #
     ########################################################################
     for epoch in range(start_epoch, num_epochs):
       # TRAINING
       model.train()
       scheduler.step()
-      train_loss = 0
+      train_loss = AverageMeter()
 
       for i, (inputs, targets) in enumerate(train_loader, 1):
         # Prepare data
@@ -99,39 +101,38 @@ class Solver(object):
         optim.step()
 
         self.train_loss_history.append(float(loss))
+        train_loss.update(float(loss))
+
         if log_nth and i % log_nth == 0:
-          last_log_nth_losses = self.train_loss_history[-log_nth:]
-          train_loss = np.mean(last_log_nth_losses)
+          last_nth_losses = self.train_loss_history[-log_nth:]
+          mean_nth_losses = np.mean(last_nth_losses)
           print('[Iteration {:d}/{:d}] TRAIN loss: {:.2e}'
                 .format(i + epoch * iter_per_epoch,
                   iter_per_epoch * num_epochs,
-                  train_loss))
+                  mean_nth_losses))
 
           if self.visdom:
             x = epoch + i / iter_per_epoch
-            self.visdom.update_plot(x=x, y=train_loss,
+            self.visdom.update_plot(x=x, y=mean_nth_losses,
                                     window=iter_plot,
                                     type_upd="append")
 
       # Free up memory
       del inputs, outputs, targets, mask, loss
 
-      if log_nth:
-        print('[Epoch {:d}/{:d}] TRAIN   loss: {:.2e}'.format(epoch + 1,
-                                                              num_epochs,
-                                                              train_loss))
+      print('[Epoch {:d}/{:d}] TRAIN loss: {:.2e}'.format(epoch + 1,
+                                                          num_epochs,
+                                                          train_loss.avg))
+      train_loss.reset()
 
       # VALIDATION
       if len(val_loader):
-        val_loss, val_err = self.test(model, val_loader)
+        val_loss = self.test(model, val_loader)
         self.val_loss_history.append(val_loss)
-        self.val_err_history.append(val_err)
 
-        if log_nth:
-          print('[Epoch {:d}/{:d}] VAL loss/err: {:.2e}/{:.3f}'.format(epoch + 1,
-                                                             num_epochs,
-                                                             val_loss,
-                                                             val_err))
+        print('[Epoch {:d}/{:d}] VAL   loss: {:.2e}'.format(epoch + 1,
+                                                            num_epochs,
+                                                            val_loss))
 
       # CHECKPOINT
       if (save_nth and (epoch+1) % save_nth == 0) or (epoch+1) == num_epochs:
@@ -142,23 +143,25 @@ class Solver(object):
           'scheduler': scheduler.state_dict()
         })
 
-        demo(model, '../datasets/test/test100.h5', epoch=epoch+1, n_samples=15)
+        demo(model, '../datasets/test/test100.h5', epoch=epoch+1, n_samples=15, 
+             savedir=self.args['saveDir'])
 
-  def test(self, model, data_loader):
+  def test(self, model, data_loader, progress_bar=False):
     """
     Computes the loss for a given model with the provided data.
 
     Inputs:
     - model: model object initialized from a torch.nn.Module
     - data_loader: provided data in torch.utils.data.DataLoader
+    - progress_bar: boolean for leaving the progress bar after return
     """
-    test_err = AverageMeter()
     test_loss = AverageMeter()
     model.eval()
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
+    pb = tqdm(total=len(data_loader), desc="test={:.2e}".format(0), leave=progress_bar)
 
     with torch.no_grad():
-      for inputs, targets in data_loader:
+      for i, (inputs, targets) in enumerate(data_loader, 1):
         inputs, targets = inputs.to(device), targets.to(device)
 
         if model.log_transform:
@@ -173,10 +176,12 @@ class Solver(object):
         loss = self.loss_func(outputs, targets)
         test_loss.update(float(loss))
 
-        err = compute_l1_error(outputs,targets)
-        test_err.update(float(err))
+        pb.set_description_str("test={:.2e}".format(loss))
+        pb.update()
 
-    return test_loss.avg, test_err.avg
+    pb.close()
+
+    return test_loss.avg
 
   def _save_checkpoint(self, state, fname='checkpoint.pth'):
     """
@@ -193,15 +198,13 @@ class Solver(object):
     """
     self.train_loss_history = []
     self.val_loss_history = []
-    self.val_err_history = []
 
   def _save_history(self, checkpoint):
     """
     Saves training history.
     """
     checkpoint.update(train_loss_history=self.train_loss_history,
-                             val_loss_history=self.val_loss_history,
-                             val_err_history=self.val_err_history)
+                      val_loss_history=self.val_loss_history)
 
   def _load_history(self, checkpoint):
     """
@@ -209,4 +212,3 @@ class Solver(object):
     """
     self.train_loss_history = checkpoint['train_loss_history']
     self.val_loss_history = checkpoint['val_loss_history']
-    self.val_err_history = checkpoint['val_err_history']

@@ -17,14 +17,11 @@ class Plotter(object):
     """
     Loads training history with its parameters to self.path.
     """
-    self.train_loss_history = self.checkpoint['train_loss_history']
-    self.val_loss_history = None
-    self.val_err_history = None
     try:
+      self.train_loss_history = self.checkpoint['train_loss_history']
       self.val_loss_history = self.checkpoint['val_loss_history']
-      self.val_err_history = self.checkpoint['val_err_history']
     except KeyError:
-      pass
+      raise ("Keys for training history not found.")
 
   def plot_histories(self, extra_title='', n_smoothed=1):
     """
@@ -47,8 +44,7 @@ class Plotter(object):
     ax1.set_ylabel('loss')
     ax1.set_xlabel('batch')
 
-    if self.val_loss_history is not None:
-      ax1.plot(x_epochs,self.val_loss_history, label="validation_loss", marker='x')
+    ax1.plot(x_epochs,self.val_loss_history, label="validation_loss", marker='x')
 
     if n_smoothed > 1:
       cumsum = np.cumsum(np.insert(self.train_loss_history, 0, 0))
@@ -59,12 +55,6 @@ class Plotter(object):
     epochs_line = 5
     for epoch in x_epochs[epochs_line-1::epochs_line]:
       ax1.axvline(x=epoch, color='gray', linestyle='-.', alpha=0.5)
-
-    if self.val_err_history is not None:
-      ax2 = ax1.twinx()
-      ax2.plot(x_epochs,self.val_err_history,'r*', label="l1-error")
-      ax1.plot(np.nan, 'r*', label="l1-error") # for legend
-      ax2.set_ylabel('l1-error')
 
     ax1.legend()
 
