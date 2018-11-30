@@ -47,7 +47,7 @@ class Solver(object):
       start_epoch = checkpoint['epoch']
       optim.load_state_dict(checkpoint['optimizer'])
       scheduler.load_state_dict(checkpoint['scheduler'])
-      self._load_history()
+      self._load_history(checkpoint)
       print("=> Loaded checkpoint (epoch {:d})".format(checkpoint['epoch']))
     else:
       self._save_checkpoint({
@@ -123,8 +123,9 @@ class Solver(object):
 
       # VALIDATION
       if len(val_loader):
-        val_err, val_loss = self.test(model, val_loader)
+        val_loss, val_err = self.test(model, val_loader)
         self.val_loss_history.append(val_loss)
+        self.val_err_history.append(val_err)
 
         if log_nth:
           print('[Epoch {:d}/{:d}] VAL loss/err: {:.2e}/{:.3f}'.format(epoch + 1,
@@ -175,7 +176,7 @@ class Solver(object):
         err = compute_l1_error(outputs,targets)
         test_err.update(float(err))
 
-    return test_err.avg, test_loss.avg
+    return test_loss.avg, test_err.avg
 
   def _save_checkpoint(self, state, fname='checkpoint.pth'):
     """
@@ -183,8 +184,8 @@ class Solver(object):
     """
     print('Saving at checkpoint...')
     path = os.path.join(self.args['saveDir'], fname)
+    self._save_history(state)
     torch.save(state, path)
-    self._save_history()
 
   def _reset_history(self):
     """
@@ -192,19 +193,20 @@ class Solver(object):
     """
     self.train_loss_history = []
     self.val_loss_history = []
+    self.val_err_history = []
 
-  def _save_history(self, fname="train_history.npz"):
+  def _save_history(self, checkpoint):
     """
-    Saves training history. Conventionally the fname should end with "*.npz".
+    Saves training history.
     """
-    np.savez(os.path.join(self.args['saveDir'], fname),
-            train_loss_history=self.train_loss_history,
-            val_loss_history=self.val_loss_history)
+    checkpoint.update(train_loss_history=self.train_loss_history,
+                             val_loss_history=self.val_loss_history,
+                             val_err_history=self.val_err_history)
 
-  def _load_history(self, fname="train_history.npz"):
+  def _load_history(self, checkpoint):
     """
-    Loads training history. Conventionally the fname should end with "*.npz".
+    Loads training history.
     """
-    npzfile = np.load(os.path.join(self.args['saveDir'], fname))
-    self.train_loss_history = npzfile['train_loss_history'].tolist()
-    self.val_loss_history = npzfile['val_loss_history'].tolist()
+    self.train_loss_history = checkpoint['train_loss_history']
+    self.val_loss_history = checkpoint['val_loss_history']
+    self.val_err_history = checkpoint['val_err_history']

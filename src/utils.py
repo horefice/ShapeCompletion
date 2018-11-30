@@ -104,7 +104,7 @@ def get_areas_and_vectors(verts, faces):
   return np.cumsum(area), [anchor,v1,v2]
 
 def choose_random_faces(areas, n=1):
-  random_v = np.random.uniform(areas[-1], size=(n,1))
+  random_v = np.random.uniform(areas[-1], size=(n))
   random_i = [np.searchsorted(areas,v) for v in random_v]
 
   return random_i
@@ -138,14 +138,6 @@ def compute_distance(samples, df):
 def compute_l1_error(inputs, targets, n=1):
   inputs, targets = inputs.data.cpu().numpy(), targets.data.cpu().numpy()
 
-  '''
-  import matplotlib.pyplot as plt
-  from mpl_toolkits.mplot3d import Axes3D
-  fig = plt.figure(1, figsize=(15,10))
-  ax1 = fig.add_subplot(111, projection='3d')
-  ax1.view_init(elev=150, azim=-120)
-  '''
-
   skipped = 0
   err = AverageMeter()
   for i,df in enumerate(inputs):
@@ -154,8 +146,6 @@ def compute_l1_error(inputs, targets, n=1):
     except:
       skipped += 1
       continue
-    #ax1.plot_trisurf(verts[:,0],verts[:,1],faces,verts[:,2], lw=1, cmap="Spectral")
-    #plt.show()
 
     areas, v = get_areas_and_vectors(verts, faces)
     random_faces = choose_random_faces(areas, n=n)
@@ -164,6 +154,6 @@ def compute_l1_error(inputs, targets, n=1):
     err.update(dists)
 
   if skipped > 1:
-    print("Skipped samples due to lack of surfaces: {:d}".format(skipped))
+    print("[Warning]: Skipped samples due to lack of surfaces: {:d}".format(skipped))
 
   return err.avg

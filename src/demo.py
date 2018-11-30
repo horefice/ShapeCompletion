@@ -80,16 +80,16 @@ def plot_3d(inputs, result, target=None, title='Demo', n=1, i=1):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Demo')
   parser.add_argument('--model', type=str, default='../models/checkpoint.pth',
-                      help='Trained model path')
+                      help='trained model path')
   parser.add_argument('--input', type=str, default='../datasets/sample/overfit.h5',
-                      help='Use file as input')
+                      help='uses file as input')
   parser.add_argument('-n', '--n-samples', type=int, default=1,
-                      help='plot n samples as figure')
-  parser.add_argument('--no-live', action='store_true', default=False,
+                      help='plots n samples as figure')
+  parser.add_argument('--no-live', action='store_true', 
                       help='disables live updates')
-  parser.add_argument('--no-plot', action='store_true', default=False,
+  parser.add_argument('--no-plot', action='store_true', 
                       help='disables plots (only saves)')
-  parser.add_argument('--no-cuda', action='store_true', default=False,
+  parser.add_argument('--no-cuda', action='store_true', 
                       help='disables CUDA')
   args = parser.parse_args()
   use_cuda = not args.no_cuda

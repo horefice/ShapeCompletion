@@ -11,50 +11,50 @@ from utils import writeArgsFile
 ## SETTINGS
 parser = argparse.ArgumentParser(description='MyNet training script')
 # --------------- General options ---------------
-parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
-                    help='Experiment ID')
-parser.add_argument('--dir', type=str, default='../datasets/train/', metavar='S',
+parser.add_argument('-x', '--expID', type=str, default='', metavar='S', 
+                    help='experiment ID')
+parser.add_argument('--dir', type=str, default='../datasets/train/', metavar='S', 
                     help='folder for training files')
-parser.add_argument('--seed', type=int, default=1, metavar='N',
+parser.add_argument('--seed', type=int, default=1, metavar='N', 
                     help='random seed (default: 1)')
-parser.add_argument('--no-cuda', action='store_true', default=False,
+parser.add_argument('--no-cuda', action='store_true', 
                     help='disables CUDA')
 # --------------- Training options ---------------
-parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N',
+parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N', 
                     help='input batch size for training (default: 64)')
-parser.add_argument('-e', '--epochs', type=int, default=10, metavar='N',
+parser.add_argument('-e', '--epochs', type=int, default=10, metavar='N', 
                     help='number of epochs to train (default: 10)')
-parser.add_argument('--val-size', type=float, default=0.2, metavar='F',
+parser.add_argument('--val-size', type=float, default=0.2, metavar='F', 
                     help='val/(train+val) set size ratio (default: 0.2)')
-parser.add_argument('--save-interval', type=int, default=5, metavar='N',
+parser.add_argument('--save-interval', type=int, default=5, metavar='N', 
                     help='how many epochs to wait before saving (default: 5)')
-parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+parser.add_argument('--log-interval', type=int, default=10, metavar='N', 
                     help='how many batches to wait before logging (default: 10)')
-parser.add_argument('--visdom', action='store_true', default=False,
+parser.add_argument('--visdom', action='store_true', 
                     help='enables VISDOM')
 # --------------- Optimization options ---------------
-parser.add_argument('--lr', '--learning-rate', type=float, default=1e-3, metavar='F',
+parser.add_argument('--lr', '--learning-rate', type=float, default=1e-3, metavar='F', 
                     help='learning rate (default: 1e-3)')
-parser.add_argument('--beta1', type=float, default=0.9, metavar='F',
+parser.add_argument('--beta1', type=float, default=0.9, metavar='F', 
                     help='first momentum coefficient (default: 0.9)')
-parser.add_argument('--beta2', type=float, default=0.999, metavar='F',
+parser.add_argument('--beta2', type=float, default=0.999, metavar='F', 
                     help='second momentum coefficient (default: 0.999)')
-parser.add_argument('--epsilon', type=float, default=1e-8, metavar='F',
+parser.add_argument('--epsilon', type=float, default=1e-8, metavar='F', 
                     help='for numerical stability (default: 1e-8)')
-parser.add_argument('--weight-decay', type=float, default=0, metavar='F',
+parser.add_argument('--weight-decay', type=float, default=0, metavar='F', 
                     help='L2 penalty/regularization')
-parser.add_argument('--scheduler-step', type=int, default=20, metavar='N',
+parser.add_argument('--scheduler-step', type=int, default=20, metavar='N', 
                     help='period of learning rate decay')
-parser.add_argument('--scheduler-gamma', type=float, default=0.5, metavar='F',
+parser.add_argument('--scheduler-gamma', type=float, default=0.5, metavar='F', 
                     help='multiplicative factor of learning rate decay')
 # --------------- Model options ---------------
-parser.add_argument('--model', type=str, default='', metavar='S',
-                    help='use previously saved model')
-parser.add_argument('--truncation', type=float, default=3.0, metavar='F',
+parser.add_argument('--model', type=str, default='', metavar='S', 
+                    help='uses previously saved model')
+parser.add_argument('--truncation', type=float, default=3.0, metavar='F', 
                     help='truncation value for distance field (default: 3)')
-parser.add_argument('--log-transform', type=bool, default=True, metavar='B',
-                    help='use log tranformation')
-parser.add_argument('--mask', type=bool, default=True, metavar='B',
+parser.add_argument('--log-transform', type=bool, default=True, metavar='B', 
+                    help='uses log tranformation')
+parser.add_argument('--mask', type=bool, default=True, metavar='B', 
                     help='mask out known values')
 
 ## SETUP

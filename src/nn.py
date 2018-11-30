@@ -96,9 +96,6 @@ class MyNet(MyNN):
     d4 = torch.cat([dec3,enc1], dim=1)
     dec4 = self.dec4(d4)
 
-    out = dec4
-
-    if self.log_transform:
-      out = out.abs().add(1).log()
+    out = dec4.abs().add(1).log() if self.log_transform else dec4
 
     return out

@@ -11,25 +11,25 @@ from utils import writeArgsFile, compute_l1_error
 ## SETTINGS
 parser = argparse.ArgumentParser(description='MyNet evaluation script')
 # --------------- General options ---------------
-parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
-                    help='Experiment ID')
-parser.add_argument('--dir', type=str, default='../datasets/test/', metavar='S',
+parser.add_argument('-x', '--expID', type=str, default='', metavar='S', 
+                    help='experiment ID')
+parser.add_argument('--dir', type=str, default='../datasets/test/', metavar='S', 
                     help='folder for test files')
-parser.add_argument('--no-cuda', action='store_true', default=False,
+parser.add_argument('--no-cuda', action='store_true', 
                     help='disables CUDA')
-parser.add_argument('--seed', type=int, default=1, metavar='N',
+parser.add_argument('--seed', type=int, default=1, metavar='N', 
                     help='random seed (default: 1)')
 # --------------- Evaluation options ---------------
-parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N',
+parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N', 
                     help='input batch size for training (default: 64)')
 # --------------- Model options ---------------
-parser.add_argument('--model', type=str, default='../models/checkpoint.pth', metavar='S',
-                    help='use previously saved model')
-parser.add_argument('--truncation', type=float, default=2.5, metavar='F',
+parser.add_argument('--model', type=str, default='../models/checkpoint.pth', metavar='S', 
+                    help='uses previously saved model')
+parser.add_argument('--truncation', type=float, default=2.5, metavar='F', 
                     help='truncation value for distance field (default: 3)')
-parser.add_argument('--log-transform', type=bool, default=True, metavar='B',
-                    help='use log tranformation')
-parser.add_argument('--mask', type=bool, default=False, metavar='B',
+parser.add_argument('--log-transform', type=bool, default=True, metavar='B', 
+                    help='uses log tranformation')
+parser.add_argument('--mask', type=bool, default=False, metavar='B', 
                     help='mask out known values')
 
 ## SETUP
@@ -77,7 +77,7 @@ print('\nTESTING (batch size {:d}).'.format(args.batch_size))
 test_loader = torch.utils.data.DataLoader(test_data, 
                                           batch_size=args.batch_size,
                                           shuffle=False, **kwargs)
-test_err, _ = solver.test(model, test_loader)
+_, test_err = solver.test(model, test_loader)
 
 print('Test accuracy: {:.3f}'.format(test_err))
 print('FINISH.')
