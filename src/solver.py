@@ -172,7 +172,7 @@ class Solver(object):
           targets.masked_fill_(mask, 0)
 
         loss = float(self.loss_func(outputs, targets))
-        test_loss.update(loss, n=targets.shape[0])
+        test_loss.update(loss)
 
         pb.set_description_str("test={:.2e}".format(loss))
         pb.update()
