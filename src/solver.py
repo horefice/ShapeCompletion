@@ -79,7 +79,6 @@ class Solver(object):
       # TRAINING
       model.train()
       scheduler.step()
-      train_loss = AverageMeter()
 
       for i, (inputs, targets) in enumerate(train_loader, 1):
         # Prepare data
@@ -101,7 +100,6 @@ class Solver(object):
         optim.step()
 
         self.train_loss_history.append(float(loss))
-        train_loss.update(float(loss))
 
         if log_nth and i % log_nth == 0:
           last_nth_losses = self.train_loss_history[-log_nth:]
@@ -120,10 +118,10 @@ class Solver(object):
       # Free up memory
       del inputs, outputs, targets, mask, loss
 
+      train_loss = np.mean(self.train_loss_history[-iter_per_epoch:])
       print('[Epoch {:d}/{:d}] TRAIN loss: {:.2e}'.format(epoch + 1,
                                                           num_epochs,
-                                                          train_loss.avg))
-      train_loss.reset()
+                                                          train_loss))
 
       # VALIDATION
       if len(val_loader):
@@ -173,8 +171,8 @@ class Solver(object):
           outputs.masked_fill_(mask, 0)
           targets.masked_fill_(mask, 0)
 
-        loss = self.loss_func(outputs, targets)
-        test_loss.update(float(loss))
+        loss = float(self.loss_func(outputs, targets))
+        test_loss.update(loss, n=targets.shape[0])
 
         pb.set_description_str("test={:.2e}".format(loss))
         pb.update()

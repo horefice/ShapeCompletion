@@ -123,11 +123,11 @@ print('\nTRAINING.')
 train_loader = torch.utils.data.DataLoader(train_data,
                                           sampler=train_sampler,
                                           batch_size=args.batch_size,
-                                          **kwargs)
+                                          drop_last=True, **kwargs)
 val_loader = torch.utils.data.DataLoader(train_data,
                                         sampler=val_sampler,
                                         batch_size=args.batch_size,
-                                        **kwargs)
+                                        drop_last=True, **kwargs)
 solver.train(model, train_loader, val_loader, log_nth=args.log_interval,
             save_nth=args.save_interval, num_epochs=args.epochs, checkpoint=checkpoint)
 print('FINISH.')
