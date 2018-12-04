@@ -15,10 +15,12 @@ parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
                     help='experiment ID')
 parser.add_argument('--dir', type=str, default='../datasets/train/', metavar='S', 
                     help='folder for training files')
-parser.add_argument('--seed', type=int, default=1, metavar='N', 
-                    help='random seed (default: 1)')
+parser.add_argument('--num-workers', type=int, default=4, metavar='N', 
+                    help='number of workers for the dataloader')
 parser.add_argument('--no-cuda', action='store_true', 
                     help='disables CUDA')
+parser.add_argument('--seed', type=int, default=1, metavar='N', 
+                    help='random seed (default: 1)')
 # --------------- Training options ---------------
 parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N', 
                     help='input batch size for training (default: 64)')
@@ -78,7 +80,7 @@ print('Seed: {:d}'.format(args.seed))
 if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
   torch.backends.cudnn.benchmark = True
-  kwargs = {'num_workers': 6, 'pin_memory': True}
+  kwargs = {'num_workers': args.num_workers, 'pin_memory': True}
 print('Device: {}'.format(args.device))
 
 ## LOAD DATASETS

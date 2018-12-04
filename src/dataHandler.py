@@ -36,8 +36,6 @@ class DataHandler(Dataset):
 
   def get_item_from_index(self, index):
     file = torch.from_numpy(np.load(self.files[index]))
-    if len(file) != 98304:
-      print('The file ({:s}) was not properly saved!'.format(self.files[index]))
     split = int(len(file)*2/3)
 
     data = file[:split].reshape(2,32,32,32).float()
