@@ -17,8 +17,8 @@ parser.add_argument('--dir', type=str, default='../datasets/test/', metavar='S',
                     help='folder for test files')
 parser.add_argument('--num-workers', type=int, default=4, metavar='N', 
                     help='number of workers for the dataloader')
-parser.add_argument('--cudnn', type=bool, default=True, metavar='B', 
-                    help='disables CUDNN benchmark')
+parser.add_argument('--benchmark', type=bool, default=True, metavar='B', 
+                    help='uses CUDNN benchmark')
 parser.add_argument('--no-cuda', action='store_true', 
                     help='disables CUDA')
 parser.add_argument('--seed', type=int, default=1, metavar='N', 
@@ -29,6 +29,8 @@ parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N',
 # --------------- Model options ---------------
 parser.add_argument('--model', type=str, default='../models/checkpoint.pth', metavar='S', 
                     help='uses previously saved model')
+parser.add_argument('--n-features', type=int, default=80, metavar='N', 
+                    help='number of features for unet model')
 parser.add_argument('--truncation', type=float, default=2.5, metavar='F', 
                     help='truncation value for distance field (default: 3)')
 parser.add_argument('--log-transform', type=bool, default=True, metavar='B', 
@@ -54,7 +56,7 @@ if use_cuda:
   torch.backends.cudnn.benchmark = args.cudnn
   kwargs = {'num_workers': args.workers, 'pin_memory': True}
   print('Workers: {:d}'.format(args.workers))
-  print('Benchmark: {}'.format(args.cudnn))
+  print('Benchmark: {}'.format(args.benchmark))
 
 ## LOAD DATASETS
 print('\nLOADING DATASET.')
@@ -68,11 +70,11 @@ print('LOADED.')
 ## LOAD MODEL & SOLVER
 print('\nLOADING NETWORK & SOLVER.')
 
-model = MyNet(log_transform=args.log_transform)
+model = MyNet(n_features=args.n_features, log_transform=args.log_transform)
 checkpoint = torch.load(args.model, map_location=args.device)
 model.load_state_dict(checkpoint['model'])
 model.to(args.device)
-print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
+print('Network parameters: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
 solver = Solver(loss_func=torch.nn.L1Loss(reduction='sum'), args={'saveDir': saveDir, 'mask': args.mask})
 print('Solver masked loss: {}'.format(args.mask))
