@@ -17,6 +17,8 @@ parser.add_argument('--dir', type=str, default='../datasets/test/', metavar='S',
                     help='folder for test files')
 parser.add_argument('--num-workers', type=int, default=4, metavar='N', 
                     help='number of workers for the dataloader')
+parser.add_argument('--cudnn', type=bool, default=True, metavar='B', 
+                    help='disables CUDNN benchmark')
 parser.add_argument('--no-cuda', action='store_true', 
                     help='disables CUDA')
 parser.add_argument('--seed', type=int, default=1, metavar='N', 
@@ -46,11 +48,13 @@ torch.manual_seed(args.seed)
 kwargs = {}
 print('Seed: {:d}'.format(args.seed))
 
+print('Device: {}'.format(args.device))
 if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
-  torch.backends.cudnn.benchmark = True
-  kwargs = {'num_workers': args.num_workers, 'pin_memory': True}
-print('Device: {}'.format(args.device))
+  torch.backends.cudnn.benchmark = args.cudnn
+  kwargs = {'num_workers': args.workers, 'pin_memory': True}
+  print('Workers: {:d}'.format(args.workers))
+  print('Benchmark: {}'.format(args.cudnn))
 
 ## LOAD DATASETS
 print('\nLOADING DATASET.')
@@ -82,7 +86,7 @@ test_loader = torch.utils.data.DataLoader(test_data,
                                           shuffle=False, drop_last=True, 
                                           **kwargs)
 
-test_err = solver.test(model, test_loader, progress_bar=True)
+test_err = solver.eval(model, test_loader, progress_bar=True)
 print('Test error: {:.3e}'.format(test_err))
 print('FINISH.')
 

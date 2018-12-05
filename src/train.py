@@ -15,8 +15,10 @@ parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
                     help='experiment ID')
 parser.add_argument('--dir', type=str, default='../datasets/train/', metavar='S', 
                     help='folder for training files')
-parser.add_argument('--num-workers', type=int, default=4, metavar='N', 
+parser.add_argument('--workers', type=int, default=4, metavar='N', 
                     help='number of workers for the dataloader')
+parser.add_argument('--cudnn', type=bool, default=True, metavar='B', 
+                    help='disables CUDNN benchmark')
 parser.add_argument('--no-cuda', action='store_true', 
                     help='disables CUDA')
 parser.add_argument('--seed', type=int, default=1, metavar='N', 
@@ -68,8 +70,7 @@ saveDir = os.path.join('../models/', args.expID)
 
 checkpoint_path = os.path.join(saveDir, "checkpoint.pth")
 if os.path.isfile(checkpoint_path):
-  x = input("[Warning]: Checkpoint detected! Resume training? [[y]/n] ")
-  if x.strip().casefold() in ['', 'y', 'yes']:
+  if input("[Warning]: Checkpoint detected! Resume training? [[y]/n] ").lower() in ['', 'y', 'yes']:
     args.model = checkpoint_path
 writeArgsFile(args,saveDir)
 
@@ -77,11 +78,13 @@ torch.manual_seed(args.seed)
 kwargs = {}
 print('Seed: {:d}'.format(args.seed))
 
+print('Device: {}'.format(args.device))
 if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
-  torch.backends.cudnn.benchmark = True
-  kwargs = {'num_workers': args.num_workers, 'pin_memory': True}
-print('Device: {}'.format(args.device))
+  torch.backends.cudnn.benchmark = args.cudnn
+  kwargs = {'num_workers': args.workers, 'pin_memory': True}
+  print('Workers: {:d}'.format(args.workers))
+  print('Benchmark: {}'.format(args.cudnn))
 
 ## LOAD DATASETS
 print('\nLOADING DATASET & SAMPLER.')
@@ -103,7 +106,7 @@ print('\nLOADING NETWORK & SOLVER.')
 model = MyNet(log_transform=args.log_transform)
 checkpoint = {}
 if args.model:
-  checkpoint = torch.load(args.model, map_location=args.device)
+  checkpoint.update(torch.load(args.model, map_location=args.device))
   model.load_state_dict(checkpoint['model'])
 model.to(args.device)
 print('Network params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))

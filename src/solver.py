@@ -3,7 +3,6 @@ import torch
 import os
 
 from tqdm import tqdm
-
 from demo import main as demo
 from utils import AverageMeter, Viz
 
@@ -102,8 +101,7 @@ class Solver(object):
         self.train_loss_history.append(float(loss))
 
         if log_nth and i % log_nth == 0:
-          last_nth_losses = self.train_loss_history[-log_nth:]
-          mean_nth_losses = np.mean(last_nth_losses)
+          mean_nth_losses = np.mean(self.train_loss_history[-log_nth:])
           print('[Iteration {:d}/{:d}] TRAIN loss: {:.2e}'
                 .format(i + epoch * iter_per_epoch,
                   iter_per_epoch * num_epochs,
@@ -125,7 +123,7 @@ class Solver(object):
 
       # VALIDATION
       if len(val_loader):
-        val_loss = self.test(model, val_loader)
+        val_loss = self.eval(model, val_loader)
         self.val_loss_history.append(val_loss)
 
         print('[Epoch {:d}/{:d}] VAL   loss: {:.2e}'.format(epoch + 1,
@@ -144,7 +142,7 @@ class Solver(object):
         demo(model, '../datasets/test/test100.h5', epoch=epoch+1, n_samples=15, 
              savedir=self.args['saveDir'])
 
-  def test(self, model, data_loader, progress_bar=False):
+  def eval(self, model, data_loader, progress_bar=False):
     """
     Computes the loss for a given model with the provided data.
 
@@ -156,7 +154,7 @@ class Solver(object):
     test_loss = AverageMeter()
     model.eval()
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
-    pb = tqdm(total=len(data_loader), desc="test={:.2e}".format(0), leave=progress_bar)
+    pb = tqdm(total=len(data_loader), desc="EVAL", leave=progress_bar)
 
     with torch.no_grad():
       for i, (inputs, targets) in enumerate(data_loader, 1):
@@ -174,7 +172,7 @@ class Solver(object):
         loss = float(self.loss_func(outputs, targets))
         test_loss.update(loss)
 
-        pb.set_description_str("test={:.2e}".format(loss))
+        pb.set_postfix_str("x={:.2e}".format(loss))
         pb.update()
 
     pb.close()

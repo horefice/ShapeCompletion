@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import h5py
 import os
 
 from torch.utils.data.dataset import Dataset
@@ -13,7 +14,7 @@ class DataHandler(Dataset):
 
     for root, _, files in os.walk(path):
       for file in files:
-        if file.endswith('.npy'):
+        if file.endswith('.h5'):
           self.files.append(os.path.join(root,file))
 
   def __getitem__(self, key):
@@ -35,12 +36,10 @@ class DataHandler(Dataset):
     return len(self.files)
 
   def get_item_from_index(self, index):
-    file = torch.from_numpy(np.load(self.files[index]))
-    split = int(len(file)*2/3)
-
-    data = file[:split].reshape(2,32,32,32).float()
-    data[0].abs_().clamp_(max=self.truncation)
-    target = file[split:].reshape(1,32,32,32).clamp(max=self.truncation).float()
+    with h5py.File(self.files[index], 'r', libver='latest') as file:
+      data = torch.from_numpy(file['data'][()]).float()
+      data[0].abs_().clamp_(max=self.truncation)
+      target = torch.from_numpy(file['target'][()]).clamp(max=self.truncation).float()
 
     return data, target
 
