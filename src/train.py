@@ -28,8 +28,10 @@ parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
 parser.add_argument('-e', '--epochs', type=int, default=10, metavar='N', 
                     help='number of epochs to train (default: 10)')
-parser.add_argument('--val-size', type=float, default=0.2, metavar='F', 
-                    help='val/(train+val) set size ratio (default: 0.2)')
+parser.add_argument('-', '--sub-epochs', type=int, default=0, metavar='N', 
+                    help='number of sub-epochs for validation (default: 0)')
+parser.add_argument('--val-size', type=float, default=0.1, metavar='F', 
+                    help='val/(train+val) set size ratio (default: 0.1)')
 parser.add_argument('--save-interval', type=int, default=5, metavar='N', 
                     help='how many epochs to wait before saving (default: 5)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N', 
@@ -69,11 +71,6 @@ args = parser.parse_args()
 use_cuda = not args.no_cuda and torch.cuda.is_available()
 args.device = torch.device('cuda:0') if use_cuda else torch.device('cpu')
 saveDir = os.path.join('../models/', args.expID)
-
-checkpoint_path = os.path.join(saveDir, "checkpoint.pth")
-if len(args.model) and os.path.isfile(checkpoint_path):
-  if not input("[Warning]: Checkpoint detected! Resume training? [[y]/n] ").lower().startswith('n'):
-    args.model = checkpoint_path
 writeArgsFile(args,saveDir)
 
 torch.manual_seed(args.seed)
@@ -83,7 +80,7 @@ print('Seed: {:d}'.format(args.seed))
 print('Device: {}'.format(args.device))
 if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
-  torch.backends.cudnn.benchmark = args.cudnn
+  torch.backends.cudnn.benchmark = args.benchmark
   kwargs = {'num_workers': args.workers, 'pin_memory': True}
   print('Workers: {:d}'.format(args.workers))
   print('Benchmark: {}'.format(args.benchmark))
@@ -130,7 +127,8 @@ train_loader = torch.utils.data.DataLoader(train_data, sampler=train_sampler,
 val_loader = torch.utils.data.DataLoader(train_data, sampler=val_sampler,
                                         batch_size=args.batch_size, **kwargs)
 solver.train(model, train_loader, val_loader, log_nth=args.log_interval,
-            save_nth=args.save_interval, num_epochs=args.epochs, checkpoint=checkpoint)
+            save_nth=args.save_interval, num_epochs=args.epochs, sub_epochs=args.sub_epochs, 
+            checkpoint=checkpoint)
 print('FINISH.')
 
 print('\nTHE END.')

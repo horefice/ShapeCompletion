@@ -15,7 +15,7 @@ parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
                     help='experiment ID')
 parser.add_argument('--dir', type=str, default='../datasets/test/', metavar='S', 
                     help='folder for test files')
-parser.add_argument('--num-workers', type=int, default=4, metavar='N', 
+parser.add_argument('--workers', type=int, default=4, metavar='N', 
                     help='number of workers for the dataloader')
 parser.add_argument('--benchmark', type=bool, default=True, metavar='B', 
                     help='uses CUDNN benchmark')
@@ -53,7 +53,7 @@ print('Seed: {:d}'.format(args.seed))
 print('Device: {}'.format(args.device))
 if use_cuda:
   torch.cuda.manual_seed_all(args.seed)
-  torch.backends.cudnn.benchmark = args.cudnn
+  torch.backends.cudnn.benchmark = args.benchmark
   kwargs = {'num_workers': args.workers, 'pin_memory': True}
   print('Workers: {:d}'.format(args.workers))
   print('Benchmark: {}'.format(args.benchmark))

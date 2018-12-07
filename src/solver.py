@@ -13,7 +13,7 @@ class Solver(object):
 
   def __init__(self, optim=torch.optim.Adam, optim_args={},
                lrs=torch.optim.lr_scheduler.StepLR, lrs_args={},
-               loss_func=torch.nn.SmoothL1Loss(reduction='sum'), args={}):
+               loss_func=torch.nn.L1Loss(reduction='sum'), args={}):
     self.optim_args = optim_args
     self.optim = optim
     self.lrs_args = lrs_args
@@ -24,7 +24,7 @@ class Solver(object):
     self._reset_history()
 
   def train(self, model, train_loader, val_loader, num_epochs=10, log_nth=0,
-            save_nth=0, checkpoint={}):
+            save_nth=0, sub_epochs=0, checkpoint={}):
     """
     Train a given model with the provided data.
 
@@ -61,7 +61,7 @@ class Solver(object):
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
 
     if self.visdom:
-      iter_plot = self.visdom.create_plot('Epoch', 'Loss', 'Train Loss',
+      iter_plot = self.visdom.create_plot('Epoch', 'Loss', 'Training History',
                                           {'ytype':'log'})
 
     ########################################################################
@@ -75,10 +75,9 @@ class Solver(object):
     #   ...                                                                #
     ########################################################################
     for epoch in range(start_epoch, num_epochs):
-      # TRAINING
-      model.train()
       scheduler.step()
 
+      # TRAINING
       for i, (inputs, targets) in enumerate(train_loader, 1):
         # Prepare data
         inputs, targets = inputs.to(device), targets.to(device)
@@ -86,7 +85,7 @@ class Solver(object):
           targets.abs_().add_(1).log_()
 
         # Forward pass
-        optim.zero_grad()
+        model.train(); optim.zero_grad()
         outputs = model(inputs)
         if self.args['mask']:
           mask = inputs[:,[1]].eq(1)
@@ -104,6 +103,7 @@ class Solver(object):
           batch_loss /= (mask.numel() - mask.sum().item())
         self.train_loss_history.append(batch_loss)
 
+        # Logging iteration
         if log_nth and i % log_nth == 0:
           mean_nth_losses = np.mean(self.train_loss_history[-log_nth:])
           print('[Iteration {:d}/{:d}] TRAIN loss: {:.2e}'
@@ -114,27 +114,39 @@ class Solver(object):
           if self.visdom:
             x = epoch + i / iter_per_epoch
             self.visdom.update_plot(x=x, y=mean_nth_losses,
+                                    window=iter_plot)
+
+        # VALIDATION
+        if i % (iter_per_epoch/(sub_epochs+1)) < 1:
+          sub_val_loss = self.eval(model, val_loader)
+          self.val_loss_history.append(sub_val_loss)
+
+          if i != iter_per_epoch:
+            print('[Iteration {:d}/{:d}] VAL   loss: {:.2e}'
+                  .format(i + epoch * iter_per_epoch,
+                    iter_per_epoch * num_epochs,
+                    sub_val_loss))
+
+          if self.visdom:
+            x = epoch + i / iter_per_epoch
+            self.visdom.update_plot(x=x, y=sub_val_loss,
                                     window=iter_plot,
-                                    type_upd="append")
+                                    name='val')
 
       # Free up memory
       del inputs, outputs, targets, mask, loss
 
+      # Epoch logging
       train_loss = np.mean(self.train_loss_history[-iter_per_epoch:])
       print('[Epoch {:d}/{:d}] TRAIN loss: {:.2e}'.format(epoch + 1,
                                                           num_epochs,
                                                           train_loss))
+      val_loss = self.val_loss_history[-1]
+      print('[Epoch {:d}/{:d}] VAL   loss: {:.2e}'.format(epoch + 1,
+                                                          num_epochs,
+                                                          val_loss))
 
-      # VALIDATION
-      if len(val_loader):
-        val_loss = self.eval(model, val_loader)
-        self.val_loss_history.append(val_loss)
-
-        print('[Epoch {:d}/{:d}] VAL   loss: {:.2e}'.format(epoch + 1,
-                                                            num_epochs,
-                                                            val_loss))
-
-      # CHECKPOINT
+      # Checkpoint
       if (save_nth and (epoch+1) % save_nth == 0) or (epoch+1) == num_epochs:
         self._save_checkpoint({
           'epoch': epoch + 1,
@@ -156,12 +168,12 @@ class Solver(object):
     - progress_bar: boolean for leaving the progress bar after return
     """
     test_loss = AverageMeter()
-    model.eval()
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
     pb = tqdm(total=len(data_loader), desc="EVAL", leave=progress_bar)
 
+    model.eval()
     with torch.no_grad():
-      for i, (inputs, targets) in enumerate(data_loader, 1):
+      for (inputs, targets) in data_loader:
         # Prepare data
         inputs, targets = inputs.to(device), targets.to(device)
         if model.log_transform:

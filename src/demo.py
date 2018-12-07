@@ -10,42 +10,42 @@ from mpl_toolkits.mplot3d import Axes3D
 from nn import MyNet
 from utils import isosurface
 
-def main(argmodel, argfile, use_cuda=True, n_samples=1, epoch=0, savedir='', cb=None):
+def main(argmodel, argfile, n_samples=1, epoch=0, savedir='', cb=None):
+  device = torch.device('cpu')
+  
   if isinstance(argmodel, str):
     model = MyNet()
-    device = torch.device('cuda:0' if use_cuda and torch.cuda.is_available() else 'cpu')
 
     checkpoint = torch.load(argmodel, map_location=device)
     model.load_state_dict(checkpoint['model'])
-    model.to(device)
     model.eval()
   else:
     model = argmodel
-    device = torch.device('cuda:0' if model.is_cuda else 'cpu')
+  model.to(device)
 
   if epoch is 0 and checkpoint is not None:
     epoch = checkpoint['epoch']
 
+  N = 64 #>2
   with h5py.File(argfile) as file:
     inputs = torch.from_numpy(file['data'][()]).view(-1,2,32,32,32).float()
-    N = inputs.size(0)
 
-    inputs = inputs[:64]
+    inputs = inputs[:N]
     inputs[:,0].abs_().clamp_(max=3)
     try:
-      targets = file['target'][:64].squeeze() # ([N],32,32,32)
+      targets = file['target'][:N].squeeze() # ([N],32,32,32)
     except Exception as e:
       targets = None
 
   with torch.no_grad():
-    result = model(inputs.to(device))
+    result = model(inputs)
 
   for n,i in enumerate(range(n_samples)):
     target = targets
     if targets is not None and targets.ndim > 3:
       target = targets[i]
 
-    (plot_3d if cb is None else cb)(inputs.data.cpu().numpy()[i,0], result.data.cpu().numpy()[i,0], target,
+    (plot_3d if cb is None else cb)(inputs.data.numpy()[i,0], result.data.numpy()[i,0], target,
               title='Demo - Epoch {:d}'.format(epoch), n=n_samples, i=n)
 
   plt.savefig(os.path.join(savedir, datetime.utcnow().strftime("%Y-%m-%d_%H:%M:%S") +'.png'))
@@ -89,13 +89,9 @@ if __name__ == '__main__':
                       help='disables live updates')
   parser.add_argument('--no-plot', action='store_true', 
                       help='disables plots (only saves)')
-  parser.add_argument('--no-cuda', action='store_true', 
-                      help='disables CUDA')
   args = parser.parse_args()
-  use_cuda = not args.no_cuda
 
-  main(args.model, args.input, use_cuda, args.n_samples)
-
+  main(args.model, args.input, args.n_samples)
   if args.no_plot:
     quit()
 
@@ -105,7 +101,7 @@ if __name__ == '__main__':
 
     if stamp != cached:
       cached = stamp
-      main(args.model, args.input, use_cuda, args.n_samples)
+      main(args.model, args.input, args.n_samples)
 
     plt.pause(8)
 

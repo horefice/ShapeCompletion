@@ -20,6 +20,7 @@ class Plotter(object):
     try:
       self.train_loss_history = self.checkpoint['train_loss_history']
       self.val_loss_history = self.checkpoint['val_loss_history']
+      self.epoch = self.checkpoint['epoch']
     except KeyError:
       raise ("Keys for training history not found.")
 
@@ -37,14 +38,14 @@ class Plotter(object):
     f, (ax1) = plt.subplots(1, 1, figsize=(20,10))
     f.suptitle('Training history ' + extra_title)
 
-    x_epochs = np.arange(1,len(self.val_loss_history)+1)*len(self.train_loss_history)/len(self.val_loss_history)
-
-    ax1.plot(np.arange(1,len(self.train_loss_history)+1), self.train_loss_history, label="train_loss")
+    x_train = np.arange(1,len(self.train_loss_history)+1)*self.epoch/len(self.train_loss_history)
+    ax1.plot(x_train, self.train_loss_history, label="train_loss")
     ax1.set_yscale('log')
     ax1.set_ylabel('loss')
-    ax1.set_xlabel('batch')
+    ax1.set_xlabel('epoch')
 
-    ax1.plot(x_epochs,self.val_loss_history, label="validation_loss", marker='x')
+    x_val = np.arange(1,len(self.val_loss_history)+1)*self.epoch/len(self.val_loss_history)
+    ax1.plot(x_val, self.val_loss_history, label="validation_loss", marker='x')
 
     if n_smoothed > 1:
       cumsum = np.cumsum(np.insert(self.train_loss_history, 0, 0))
@@ -52,8 +53,8 @@ class Plotter(object):
       smoothed = (cumsum[N:] - cumsum[:-N]) / float(N)
       ax1.plot(np.arange(n_smoothed,len(smoothed)+n_smoothed), smoothed, label="train_loss_MA")
 
-    epochs_line = 5
-    for epoch in x_epochs[epochs_line-1::epochs_line]:
+    epochs_line = 20
+    for epoch in range(epochs_line,self.epoch,epochs_line):
       ax1.axvline(x=epoch, color='gray', linestyle='-.', alpha=0.5)
 
     ax1.legend()

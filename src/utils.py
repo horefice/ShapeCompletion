@@ -38,10 +38,11 @@ class Viz(object):
                          Y=np.array([0]),
                          opts=options)
 
-  def update_plot(self, x, y, window, type_upd):
+  def update_plot(self, x, y, window, name='1', type_upd='append'):
     self.viz.line(X=np.array([x]),
                   Y=np.array([y]),
                   win=window,
+                  name=name,
                   update=type_upd)
 
   def matplot(self, x):
