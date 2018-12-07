@@ -41,7 +41,7 @@ class DataHandler(Dataset):
       data[0].abs_().clamp_(max=self.truncation)
       target = torch.from_numpy(file['target'][()]).clamp(max=self.truncation).float()
 
-    return data, target
+      return data, target
 
   def subdivide_dataset(self, val_size, shuffle=False, seed=1):
     num_samples = int(len(self))

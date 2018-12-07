@@ -83,7 +83,7 @@ class Solver(object):
         # Prepare data
         inputs, targets = inputs.to(device), targets.to(device)
         if model.log_transform:
-          targets = targets.abs().add(1).log()
+          targets.abs_().add_(1).log_()
 
         # Forward pass
         optim.zero_grad()
@@ -98,7 +98,11 @@ class Solver(object):
         loss.backward()
         optim.step()
 
-        self.train_loss_history.append(float(loss))
+        # Update progress
+        batch_loss = float(loss)
+        if self.args['mask']:
+          batch_loss /= (mask.numel() - mask.sum().item())
+        self.train_loss_history.append(batch_loss)
 
         if log_nth and i % log_nth == 0:
           mean_nth_losses = np.mean(self.train_loss_history[-log_nth:])
@@ -139,7 +143,7 @@ class Solver(object):
           'scheduler': scheduler.state_dict()
         })
 
-        demo(model, '../datasets/test/test100.h5', epoch=epoch+1, n_samples=15, 
+        demo(model, '../datasets/test100.h5', epoch=epoch+1, n_samples=15, 
              savedir=self.args['saveDir'])
 
   def eval(self, model, data_loader, progress_bar=False):
@@ -158,20 +162,25 @@ class Solver(object):
 
     with torch.no_grad():
       for i, (inputs, targets) in enumerate(data_loader, 1):
+        # Prepare data
         inputs, targets = inputs.to(device), targets.to(device)
-
         if model.log_transform:
-          targets = targets.abs().add(1).log()
+          targets.abs_().add_(1).log_()
         
+        # Forward pass
         outputs = model(inputs)
         if self.args['mask']:
           mask = inputs[:,[1]].eq(1)
           outputs.masked_fill_(mask, 0)
           targets.masked_fill_(mask, 0)
 
+        # Computes loss
         loss = float(self.loss_func(outputs, targets))
-        test_loss.update(loss)
+        if self.args['mask']:
+          loss /= (mask.numel() - mask.sum().item())
+        test_loss.update(loss, n=targets.size(0))
 
+        # Update progress
         pb.set_postfix_str("x={:.2e}".format(loss))
         pb.update()
 

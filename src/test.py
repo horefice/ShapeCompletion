@@ -83,10 +83,8 @@ print('LOADED.')
 ## TEST
 print('\nTESTING.')
 
-test_loader = torch.utils.data.DataLoader(test_data, 
-                                          batch_size=args.batch_size,
-                                          shuffle=False, drop_last=True, 
-                                          **kwargs)
+test_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch_size,
+                                          shuffle=False, **kwargs)
 
 test_err = solver.eval(model, test_loader, progress_bar=True)
 print('Test error: {:.3e}'.format(test_err))

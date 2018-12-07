@@ -72,7 +72,7 @@ saveDir = os.path.join('../models/', args.expID)
 
 checkpoint_path = os.path.join(saveDir, "checkpoint.pth")
 if len(args.model) and os.path.isfile(checkpoint_path):
-  if input("[Warning]: Checkpoint detected! Resume training? [[y]/n] ").lower() in ['', 'y', 'yes']:
+  if not input("[Warning]: Checkpoint detected! Resume training? [[y]/n] ").lower().startswith('n'):
     args.model = checkpoint_path
 writeArgsFile(args,saveDir)
 
@@ -125,14 +125,10 @@ print('LOADED.')
 ## TRAIN
 print('\nTRAINING.')
 
-train_loader = torch.utils.data.DataLoader(train_data,
-                                          sampler=train_sampler,
-                                          batch_size=args.batch_size,
-                                          drop_last=True, **kwargs)
-val_loader = torch.utils.data.DataLoader(train_data,
-                                        sampler=val_sampler,
-                                        batch_size=args.batch_size,
-                                        drop_last=True, **kwargs)
+train_loader = torch.utils.data.DataLoader(train_data, sampler=train_sampler,
+                                          batch_size=args.batch_size, **kwargs)
+val_loader = torch.utils.data.DataLoader(train_data, sampler=val_sampler,
+                                        batch_size=args.batch_size, **kwargs)
 solver.train(model, train_loader, val_loader, log_nth=args.log_interval,
             save_nth=args.save_interval, num_epochs=args.epochs, checkpoint=checkpoint)
 print('FINISH.')
