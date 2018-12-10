@@ -26,19 +26,21 @@ def main(argmodel, argfile, n_samples=1, epoch=0, savedir='', cb=None):
   if epoch is 0 and checkpoint is not None:
     epoch = checkpoint['epoch']
 
-  N = 64 #>2
+  N = 64 # >1
   with h5py.File(argfile) as file:
     inputs = torch.from_numpy(file['data'][()]).view(-1,2,32,32,32).float()
 
     inputs = inputs[:N]
     inputs[:,0].abs_().clamp_(max=3)
     try:
-      targets = file['target'][:N].squeeze() # ([N],32,32,32)
+      targets = file['target'][:N].squeeze().float() # ([N],32,32,32)
     except Exception as e:
       targets = None
 
   with torch.no_grad():
     result = model(inputs)
+    if model.log_transform:
+      result = np.expm1(result)
 
   for n,i in enumerate(range(n_samples)):
     target = targets

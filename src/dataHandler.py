@@ -37,9 +37,9 @@ class DataHandler(Dataset):
 
   def get_item_from_index(self, index):
     with h5py.File(self.files[index], 'r', libver='latest') as file:
-      data = torch.from_numpy(file['data'][()]).float()
+      data = torch.from_numpy(file['data'][:]).float()
       data[0].abs_().clamp_(max=self.truncation)
-      target = torch.from_numpy(file['target'][()]).clamp(max=self.truncation).float()
+      target = torch.from_numpy(file['target'][:]).float().clamp(max=self.truncation)
 
       return data, target
 

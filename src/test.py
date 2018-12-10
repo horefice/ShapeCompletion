@@ -70,7 +70,7 @@ print('LOADED.')
 ## LOAD MODEL & SOLVER
 print('\nLOADING NETWORK & SOLVER.')
 
-model = MyNet(n_features=args.n_features, log_transform=args.log_transform)
+model = MyNet(n_features=args.n_features) # log-transform will be overwritten
 checkpoint = torch.load(args.model, map_location=args.device)
 model.load_state_dict(checkpoint['model'])
 model.to(args.device)
@@ -86,7 +86,7 @@ print('\nTESTING.')
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch_size,
                                           shuffle=False, **kwargs)
 
-test_err = solver.eval(model, test_loader, progress_bar=True)
+test_err = solver.eval(model, test_loader, progress_bar=True, reverse_log=not args.log_transform)
 print('Test error: {:.3e}'.format(test_err))
 print('FINISH.')
 

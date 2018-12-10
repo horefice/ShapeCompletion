@@ -9,50 +9,50 @@ class MyNN(nn.Module):
   """
 
   def __init__(self):
-    """
-    Initialize a new network.
-    """
-    super().__init__()
+  """
+  Initialize a new network.
+  """
+  super().__init__()
 
   def forward(self, x):
-    """
-    Forward pass of the neural network. Should not be called manually but by
-    calling a model instance directly.
+  """
+  Forward pass of the neural network. Should not be called manually but by
+  calling a model instance directly.
 
-    Inputs:
-    - x: PyTorch input Variable
-    """
-    print("MyNN: Forward method should be overwritten!")
-    return x
+  Inputs:
+  - x: PyTorch input Variable
+  """
+  print("MyNN: Forward method should be overwritten!")
+  return x
 
   def num_flat_features(self, x):
-    """
-    Computes the number of features if the spatial input x is transformed
-    to a 1D flat input.
-    """
-    size = x.size()[1:]  # all dimensions except the batch dimension
-    num_features = 1
-    for s in size:
-      num_features *= s
-    return num_features
+  """
+  Computes the number of features if the spatial input x is transformed
+  to a 1D flat input.
+  """
+  size = x.size()[1:]  # all dimensions except the batch dimension
+  num_features = 1
+  for s in size:
+    num_features *= s
+  return num_features
 
   @property
   def is_cuda(self):
-    """
-    Check if model parameters are allocated on the GPU.
-    """
-    return next(self.parameters()).is_cuda
+  """
+  Check if model parameters are allocated on the GPU.
+  """
+  return next(self.parameters()).is_cuda
 
   def save(self, path="../models/nn.pth"):
-    """
-    Save model with its parameters to the given path. Conventionally the
-    path should end with "*.pth".
+  """
+  Save model with its parameters to the given path. Conventionally the
+  path should end with "*.pth".
 
-    Inputs:
-    - path: path string
-    """
-    print('Saving model... %s' % path)
-    torch.save(self.state_dict(), path)
+  Inputs:
+  - path: path string
+  """
+  print('Saving model... %s' % path)
+  torch.save(self.state_dict(), path)
 
 """MyNet"""
 class MyNet(MyNN):
@@ -96,6 +96,8 @@ class MyNet(MyNN):
     d4 = torch.cat([dec3,enc1], dim=1)
     dec4 = self.dec4(d4)
 
-    out = dec4.abs().add(1).log() if self.log_transform else dec4
+    out = dec4.abs()
+    if self.log_transform:
+      out.add_(1).log_()
 
     return out

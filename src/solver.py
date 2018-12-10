@@ -40,7 +40,7 @@ class Solver(object):
     optim = self.optim(filter(lambda p: p.requires_grad, model.parameters()),
                        **self.optim_args)
     scheduler = self.lrs(optim, **self.lrs_args)
-    
+
     iter_per_epoch = len(train_loader)
     start_epoch = 0
 
@@ -56,7 +56,7 @@ class Solver(object):
         'model': model.state_dict(),
         'optimizer': optim.state_dict(),
         'scheduler': scheduler.state_dict()
-      })
+      }, False)
 
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
 
@@ -81,26 +81,27 @@ class Solver(object):
       for i, (inputs, targets) in enumerate(train_loader, 1):
         # Prepare data
         inputs, targets = inputs.to(device), targets.to(device)
-        if model.log_transform:
-          targets.abs_().add_(1).log_()
 
         # Forward pass
         model.train(); optim.zero_grad()
         outputs = model(inputs)
         if self.args['mask']:
-          mask = inputs[:,[1]].eq(1)
-          outputs.masked_fill_(mask, 0)
-          targets.masked_fill_(mask, 0)
+          mask = inputs[:,[1]].eq(-1) # position of unknown values
+          outputs.mul_(mask)
+          targets.mul_(mask)
 
-        # Computes loss and backward pass
+        # Log-Transform handling
+        if model.log_transform:
+          targets.add_(1).log_()
+
+        # Compute loss and backward pass
         loss = self.loss_func(outputs, targets)
         loss.backward()
         optim.step()
 
         # Update progress
         batch_loss = float(loss)
-        if self.args['mask']:
-          batch_loss /= (mask.numel() - mask.sum().item())
+        batch_loss /= mask.sum().item() if self.args['mask'] else mask.numel()
         self.train_loss_history.append(batch_loss)
 
         # Logging iteration
@@ -121,23 +122,23 @@ class Solver(object):
           sub_val_loss = self.eval(model, val_loader)
           self.val_loss_history.append(sub_val_loss)
 
-          if i != iter_per_epoch:
+          if log_nth:
             print('[Iteration {:d}/{:d}] VAL   loss: {:.2e}'
                   .format(i + epoch * iter_per_epoch,
                     iter_per_epoch * num_epochs,
                     sub_val_loss))
 
-          if self.visdom:
-            x = epoch + i / iter_per_epoch
-            self.visdom.update_plot(x=x, y=sub_val_loss,
-                                    window=iter_plot,
-                                    name='val')
+            if self.visdom:
+              x = epoch + i / iter_per_epoch
+              self.visdom.update_plot(x=x, y=sub_val_loss,
+                                      window=iter_plot,
+                                      name='val')
 
       # Free up memory
       del inputs, outputs, targets, mask, loss
 
       # Epoch logging
-      train_loss = np.mean(self.train_loss_history[-iter_per_epoch:])
+      train_loss = self.train_loss_history[-1]
       print('[Epoch {:d}/{:d}] TRAIN loss: {:.2e}'.format(epoch + 1,
                                                           num_epochs,
                                                           train_loss))
@@ -153,19 +154,20 @@ class Solver(object):
           'model': model.state_dict(),
           'optimizer': optim.state_dict(),
           'scheduler': scheduler.state_dict()
-        })
+        }, True)
 
         demo(model, '../datasets/test100.h5', epoch=epoch+1, n_samples=15, 
              savedir=self.args['saveDir'])
 
-  def eval(self, model, data_loader, progress_bar=False):
+  def eval(self, model, data_loader, progress_bar=False, reverse_log=False):
     """
-    Computes the loss for a given model with the provided data.
+    Compute the loss for a given model with the provided data.
 
     Inputs:
     - model: model object initialized from a torch.nn.Module
     - data_loader: provided data in torch.utils.data.DataLoader
     - progress_bar: boolean for leaving the progress bar after return
+    - reverse_log: boolean for reversing the log transform enforcing grid units
     """
     test_loss = AverageMeter()
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
@@ -176,21 +178,25 @@ class Solver(object):
       for (inputs, targets) in data_loader:
         # Prepare data
         inputs, targets = inputs.to(device), targets.to(device)
-        if model.log_transform:
-          targets.abs_().add_(1).log_()
-        
+
         # Forward pass
         outputs = model(inputs)
         if self.args['mask']:
-          mask = inputs[:,[1]].eq(1)
-          outputs.masked_fill_(mask, 0)
-          targets.masked_fill_(mask, 0)
+          mask = inputs[:,[1]].eq(-1) # position of unknown values
+          outputs.mul_(mask)
+          targets.mul_(mask)
 
-        # Computes loss
-        loss = float(self.loss_func(outputs, targets))
-        if self.args['mask']:
-          loss /= (mask.numel() - mask.sum().item())
-        test_loss.update(loss, n=targets.size(0))
+        # Log-Transform handling
+        if model.log_transform:
+          if reverse_log:
+            outputs.expm1_()
+          else:
+            targets.add_(1).log_()
+
+        # Compute loss
+        batch_loss = float(self.loss_func(outputs, targets))
+        batch_loss /= mask.sum().item() if self.args['mask'] else mask.numel()
+        test_loss.update(batch_loss, n=targets.size(0))
 
         # Update progress
         pb.set_postfix_str("x={:.2e}".format(loss))
@@ -200,32 +206,35 @@ class Solver(object):
 
     return test_loss.avg
 
-  def _save_checkpoint(self, state, fname='checkpoint.pth'):
+  def _save_checkpoint(self, state, overwrite=False, fname='checkpoint.pth'):
     """
-    Saves current state of training.
+    Save current state of training.
     """
-    print('Saving at checkpoint...')
     path = os.path.join(self.args['saveDir'], fname)
+    if overwrite and os.path.isfile(path):
+      return
+
+    print('Saving at checkpoint...')
     self._save_history(state)
     torch.save(state, path)
 
   def _reset_history(self):
     """
-    Resets train and val histories.
+    Reset train and val histories.
     """
     self.train_loss_history = []
     self.val_loss_history = []
 
   def _save_history(self, checkpoint):
     """
-    Saves training history.
+    Save training history.
     """
     checkpoint.update(train_loss_history=self.train_loss_history,
                       val_loss_history=self.val_loss_history)
 
   def _load_history(self, checkpoint):
     """
-    Loads training history.
+    Load training history.
     """
     self.train_loss_history = checkpoint['train_loss_history']
     self.val_loss_history = checkpoint['val_loss_history']
