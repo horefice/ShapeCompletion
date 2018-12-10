@@ -33,7 +33,7 @@ parser.add_argument('--n-features', type=int, default=80, metavar='N',
                     help='number of features for unet model')
 parser.add_argument('--truncation', type=float, default=2.5, metavar='F', 
                     help='truncation value for distance field (default: 3)')
-parser.add_argument('--log-transform', type=bool, default=True, metavar='B', 
+parser.add_argument('--log-transform', type=bool, default=False, metavar='B', 
                     help='uses log tranformation')
 parser.add_argument('--mask', type=bool, default=True, metavar='B', 
                     help='mask out known values')
@@ -73,6 +73,7 @@ print('\nLOADING NETWORK & SOLVER.')
 model = MyNet(n_features=args.n_features) # log-transform will be overwritten
 checkpoint = torch.load(args.model, map_location=args.device)
 model.load_state_dict(checkpoint['model'])
+model.log_transform=args.log_transform
 model.to(args.device)
 print('Network parameters: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
@@ -86,7 +87,7 @@ print('\nTESTING.')
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch_size,
                                           shuffle=False, **kwargs)
 
-test_err = solver.eval(model, test_loader, progress_bar=True, reverse_log=not args.log_transform)
+test_err = solver.eval(model, test_loader, progress_bar=True)
 print('Test error: {:.3e}'.format(test_err))
 print('FINISH.')
 

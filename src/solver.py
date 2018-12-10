@@ -85,8 +85,10 @@ class Solver(object):
         # Forward pass
         model.train(); optim.zero_grad()
         outputs = model(inputs)
+
+        # Masked loss handling
         if self.args['mask']:
-          mask = inputs[:,[1]].eq(-1) # position of unknown values
+          mask = inputs[:,[1]].eq(-1).float() # position of unknown values
           outputs.mul_(mask)
           targets.mul_(mask)
 
@@ -159,7 +161,7 @@ class Solver(object):
         demo(model, '../datasets/test100.h5', epoch=epoch+1, n_samples=15, 
              savedir=self.args['saveDir'])
 
-  def eval(self, model, data_loader, progress_bar=False, reverse_log=False):
+  def eval(self, model, data_loader, progress_bar=False):
     """
     Compute the loss for a given model with the provided data.
 
@@ -167,7 +169,6 @@ class Solver(object):
     - model: model object initialized from a torch.nn.Module
     - data_loader: provided data in torch.utils.data.DataLoader
     - progress_bar: boolean for leaving the progress bar after return
-    - reverse_log: boolean for reversing the log transform enforcing grid units
     """
     test_loss = AverageMeter()
     device = torch.device("cuda:0" if model.is_cuda else "cpu")
@@ -181,17 +182,16 @@ class Solver(object):
 
         # Forward pass
         outputs = model(inputs)
+
+        # Masked loss handling
         if self.args['mask']:
-          mask = inputs[:,[1]].eq(-1) # position of unknown values
+          mask = inputs[:,[1]].eq(-1).float() # position of unknown values
           outputs.mul_(mask)
           targets.mul_(mask)
 
         # Log-Transform handling
         if model.log_transform:
-          if reverse_log:
-            outputs.expm1_()
-          else:
-            targets.add_(1).log_()
+          targets.add_(1).log_()
 
         # Compute loss
         batch_loss = float(self.loss_func(outputs, targets))
@@ -199,7 +199,7 @@ class Solver(object):
         test_loss.update(batch_loss, n=targets.size(0))
 
         # Update progress
-        pb.set_postfix_str("x={:.2e}".format(loss))
+        pb.set_postfix_str("x={:.2e}".format(batch_loss))
         pb.update()
 
     pb.close()
