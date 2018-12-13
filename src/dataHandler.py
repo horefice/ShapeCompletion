@@ -5,6 +5,7 @@ import os
 
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
+from torch.nn.parallel.data_parallel import DataParallel
 
 
 class DataHandler(Dataset):
@@ -62,3 +63,15 @@ class DataHandler(Dataset):
         val_sampler = SubsetRandomSampler(val_idx)
 
         return (train_sampler, val_sampler)
+
+
+class MyDataParallel(DataParallel):
+    def __init__(self, module, **kwargs):
+        super().__init__()
+
+    @property
+    def is_cuda(self):
+        return self.module.is_cuda
+
+    def state_dict(self):
+        return self.module.state_dict

@@ -5,7 +5,7 @@ import os
 
 from nn import MyNet
 from solver import Solver
-from dataHandler import DataHandler
+from dataHandler import DataHandler, MyDataParallel
 from utils import writeArgsFile
 
 # SETTINGS
@@ -110,8 +110,8 @@ if args.model:
     checkpoint.update(torch.load(args.model, map_location=args.device))
     model.load_state_dict(checkpoint['model'])
 if torch.cuda.device_count() > 1:
-    print("Network ready for ", torch.cuda.device_count(), "GPUs")
-    model = torch.nn.DataParallel(model)
+    print("Network ready for", torch.cuda.device_count(), "GPUs")
+    model = torch.nn.MyDataParallel(model)
 model.to(args.device)
 print('Network parameters: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
