@@ -5,7 +5,7 @@ import os
 
 from nn import MyNet
 from solver import Solver
-from dataHandler import DataHandler, MyDataParallel
+from dataHandler import MyDataset, MyDataParallel
 from utils import writeArgsFile
 
 # SETTINGS
@@ -77,18 +77,22 @@ torch.manual_seed(args.seed)
 kwargs = {}
 print('Seed: {:d}'.format(args.seed))
 
+num_gpus = torch.cuda.device_count()
 print('Device: {}'.format(args.device))
+if num_gpus > 1:
+    print("GPUs: {:d}".format(num_gpus))
+
 if use_cuda:
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cudnn.benchmark = args.benchmark
-    kwargs = {'num_workers': args.workers, 'pin_memory': True}
+    kwargs = {'num_workers': num_gpus * args.workers, 'pin_memory': True}
     print('Workers: {:d}'.format(args.workers))
     print('Benchmark: {}'.format(args.benchmark))
 
 # LOAD DATASETS
 print('\nLOADING DATASET & SAMPLER.')
 
-train_data = DataHandler(args.dir, truncation=args.truncation)
+train_data = MyDataset(args.dir, truncation=args.truncation)
 print('Dataset truncation at: {:.1f}'.format(args.truncation))
 
 train_sampler, val_sampler = train_data.subdivide_dataset(args.val_size,
@@ -109,9 +113,8 @@ checkpoint = {}
 if args.model:
     checkpoint.update(torch.load(args.model, map_location=args.device))
     model.load_state_dict(checkpoint['model'])
-if torch.cuda.device_count() > 1:
-    print("Network ready for", torch.cuda.device_count(), "GPUs")
-    model = torch.nn.MyDataParallel(model)
+if num_gpus > 1:
+    model = MyDataParallel(model)
 model.to(args.device)
 print('Network parameters: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 

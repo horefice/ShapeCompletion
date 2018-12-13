@@ -8,9 +8,9 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torch.nn.parallel.data_parallel import DataParallel
 
 
-class DataHandler(Dataset):
+class MyDataset(Dataset):
     def __init__(self, path, truncation=3):
-        super(DataHandler, self).__init__()
+        super().__init__()
         self.truncation = truncation
         self.files = []
 
@@ -67,11 +67,15 @@ class DataHandler(Dataset):
 
 class MyDataParallel(DataParallel):
     def __init__(self, module, **kwargs):
-        super().__init__()
+        super().__init__(module, **kwargs)
 
     @property
     def is_cuda(self):
         return self.module.is_cuda
 
+    @property
+    def log_transform(self):
+        return self.module.log_transform
+
     def state_dict(self):
-        return self.module.state_dict
+        return self.module.state_dict()

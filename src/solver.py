@@ -162,8 +162,8 @@ class Solver(object):
                                        'scheduler': scheduler.state_dict()
                                        }, True)
 
-                demo(model, '../datasets/test100.h5', epoch=epoch + 1,
-                     n_samples=15, savedir=self.args['saveDir'])
+                # demo(model, '../datasets/test100.h5', epoch=epoch + 1,
+                #     n_samples=15, savedir=self.args['saveDir'])
 
     def eval(self, model, data_loader, threshold=2.5, progress_bar=False):
         """
@@ -172,6 +172,7 @@ class Solver(object):
         Inputs:
         - model: model object initialized from a torch.nn.Module
         - data_loader: provided data in torch.utils.data.DataLoader
+        - threshold: sets the boundary between object and empty space
         - progress_bar: boolean for leaving the progress bar after return
         """
         test_loss = AverageMeter()

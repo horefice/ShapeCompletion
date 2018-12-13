@@ -5,7 +5,7 @@ import os
 
 from nn import MyNet
 from solver import Solver
-from dataHandler import DataHandler
+from dataHandler import MyDataset, MyDataParallel
 from utils import writeArgsFile
 
 # SETTINGS
@@ -52,18 +52,22 @@ torch.manual_seed(args.seed)
 kwargs = {}
 print('Seed: {:d}'.format(args.seed))
 
+num_gpus = torch.cuda.device_count()
 print('Device: {}'.format(args.device))
+if num_gpus > 1:
+    print("GPUs: {:d}".format(num_gpus))
+
 if use_cuda:
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cudnn.benchmark = args.benchmark
-    kwargs = {'num_workers': args.workers, 'pin_memory': True}
+    kwargs = {'num_workers': num_gpus * args.workers, 'pin_memory': True}
     print('Workers: {:d}'.format(args.workers))
     print('Benchmark: {}'.format(args.benchmark))
 
 # LOAD DATASETS
 print('\nLOADING DATASET.')
 
-test_data = DataHandler(args.dir, truncation=args.truncation)
+test_data = MyDataset(args.dir, truncation=args.truncation)
 print('Dataset truncation at: {:.1f}'.format(args.truncation))
 print('Dataset length: {:d}'.format(len(test_data)))
 print('Batch size: {:d} x {}'.format(args.batch_size,
@@ -77,6 +81,8 @@ model = MyNet(n_features=args.n_features)  # log-transform will be overwritten
 checkpoint = torch.load(args.model, map_location=args.device)
 model.load_state_dict(checkpoint['model'])
 model.log_transform = args.log_transform
+if num_gpus > 1:
+    model = MyDataParallel(model)
 model.to(args.device)
 print('Network parameters: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
