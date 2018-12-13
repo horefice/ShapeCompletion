@@ -13,8 +13,8 @@ parser = argparse.ArgumentParser(description='MyNet evaluation script')
 # --------------- General options ---------------
 parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
                     help='experiment ID')
-parser.add_argument('--txt', type=str, default='../datasets/test/files.txt',
-                    metavar='S', help='txt for testing files')
+parser.add_argument('--dir', type=str, default='../datasets/test/',
+                    metavar='S', help='directory for testing files')
 parser.add_argument('--workers', type=int, default=4, metavar='N',
                     help='number of workers for the dataloader per GPU')
 parser.add_argument('--benchmark', type=bool, default=True, metavar='B',
@@ -67,7 +67,7 @@ if use_cuda:
 # LOAD DATASETS
 print('\nLOADING DATASET.')
 
-test_data = MyDataset(args.txt, truncation=args.truncation)
+test_data = MyDataset(args.dir, truncation=args.truncation)
 print('Dataset truncation at: {:.1f}'.format(args.truncation))
 print('Dataset length: {:d}'.format(len(test_data)))
 print('Batch size: {:d} x {}'.format(args.batch_size,
