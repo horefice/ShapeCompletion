@@ -50,7 +50,7 @@ def main(argmodel, argfile, n_samples=1, epoch=0, savedir=None, cb=None):
 
         (plot_3d if cb is None else cb)(inputs.data.numpy()[i],
                                         improveSDF(result.data.numpy()[i, 0]),
-                                        target, n=n_samples, i=n
+                                        target, n=n_samples, i=n,
                                         title='Demo - Epoch {:d}'.format(epoch))
 
     if savedir is not None:

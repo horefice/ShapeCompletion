@@ -109,6 +109,9 @@ checkpoint = {}
 if args.model:
     checkpoint.update(torch.load(args.model, map_location=args.device))
     model.load_state_dict(checkpoint['model'])
+if torch.cuda.device_count() > 1:
+    print("Network ready for ", torch.cuda.device_count(), "GPUs")
+    model = torch.nn.DataParallel(model)
 model.to(args.device)
 print('Network parameters: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
 
@@ -122,7 +125,7 @@ print('Solver weight decay: {:.1e}'.format(args.weight_decay))
 print('Masked loss: {}'.format(args.mask))
 print('LOADED.')
 
-## TRAIN
+# TRAIN
 print('\nTRAINING.')
 
 train_loader = torch.utils.data.DataLoader(train_data, sampler=train_sampler,
