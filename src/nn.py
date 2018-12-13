@@ -64,6 +64,7 @@ class MyNet(MyNN):
         super().__init__()
         self.log_transform = log_transform
 
+        # Encoder
         self.enc1 = nn.Conv3d(2, n_features, 4, stride=2, padding=1)
         self.bn1 = nn.BatchNorm3d(n_features)
         self.enc2 = nn.Conv3d(n_features, 2 * n_features, 4,
@@ -76,7 +77,14 @@ class MyNet(MyNN):
                               stride=1, padding=0)
         self.bn4 = nn.BatchNorm3d(8 * n_features)
 
-        self.dec1 = nn.ConvTranspose3d(8 * n_features, 4 * n_features, 4,
+        # Bottleneck
+        self.fc1 = nn.Linear(8 * n_features, 8 * n_features)
+        self.bn5 = nn.BatchNorm1d(8 * n_features)
+        self.fc2 = nn.Linear(8 * n_features, 8 * n_features)
+        self.bn6 = nn.BatchNorm1d(8 * n_features)
+
+        # Decoder
+        self.dec1 = nn.ConvTranspose3d(2 * 8 * n_features, 4 * n_features, 4,
                                        stride=1, padding=0)
         self.dbn1 = nn.BatchNorm3d(4 * n_features)
         self.dec2 = nn.ConvTranspose3d(2 * 4 * n_features, 2 * n_features, 4,
@@ -93,9 +101,13 @@ class MyNet(MyNN):
         enc2 = F.leaky_relu(self.bn2(self.enc2(enc1)))
         enc3 = F.leaky_relu(self.bn3(self.enc3(enc2)))
         enc4 = F.leaky_relu(self.bn4(self.enc4(enc3)))
+        shape = enc4.shape
 
-        # d1 = torch.cat([bottleneck,enc4], dim=1)
-        dec1 = F.leaky_relu(self.dbn1(self.dec1(enc4)))
+        b1 = F.leaky_relu(self.bn5(self.fc1(enc4.view(enc4.size(0), -1))))
+        b2 = F.leaky_relu(self.bn6(self.fc2(b1))).view(shape)
+
+        d1 = torch.cat([b2, enc4], dim=1)
+        dec1 = F.leaky_relu(self.dbn1(self.dec1(d1)))
         d2 = torch.cat([dec1, enc3], dim=1)
         dec2 = F.leaky_relu(self.dbn2(self.dec2(d2)))
         d3 = torch.cat([dec2, enc2], dim=1)

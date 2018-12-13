@@ -17,7 +17,7 @@ class MyDataset(Dataset):
         for root, _, files in os.walk(path):
             for file in files:
                 if file.endswith('.h5'):
-                    self.files.append(h5py.File(file, 'r', libver='latest'))
+                    self.files.append(os.path.join(root, file))
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -38,11 +38,11 @@ class MyDataset(Dataset):
         return len(self.files)
 
     def get_item_from_index(self, index):
-        file = self.files[index]
-        data = torch.from_numpy(file['data'][:]).float()
-        data[0].abs_().clamp_(max=self.truncation)
-        target = torch.from_numpy(file['target'][:])\
-                      .float().clamp(max=self.truncation)
+        with h5py.File(self.files[index], 'r', libver='latest') as file:
+            data = torch.from_numpy(file['data'][:]).float()
+            data[0].abs_().clamp_(max=self.truncation)
+            target = torch.from_numpy(file['target'][:])\
+                          .float().clamp(max=self.truncation)
 
         return data, target
 
