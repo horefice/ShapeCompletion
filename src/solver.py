@@ -220,7 +220,7 @@ class Solver(object):
         Save current state of training.
         """
         path = os.path.join(self.args['saveDir'], fname)
-        if overwrite and os.path.isfile(path):
+        if not overwrite and os.path.isfile(path):
             return
 
         print('Saving at checkpoint...')

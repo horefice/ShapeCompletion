@@ -13,10 +13,10 @@ parser = argparse.ArgumentParser(description='MyNet evaluation script')
 # --------------- General options ---------------
 parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
                     help='experiment ID')
-parser.add_argument('--dir', type=str, default='../datasets/test/', metavar='S',
-                    help='folder for test files')
+parser.add_argument('--txt', type=str, default='../datasets/test/files.txt',
+                    metavar='S', help='txt for testing files')
 parser.add_argument('--workers', type=int, default=4, metavar='N',
-                    help='number of workers for the dataloader')
+                    help='number of workers for the dataloader per GPU')
 parser.add_argument('--benchmark', type=bool, default=True, metavar='B',
                     help='uses CUDNN benchmark')
 parser.add_argument('--no-cuda', action='store_true',
@@ -27,8 +27,8 @@ parser.add_argument('--seed', type=int, default=1, metavar='N',
 parser.add_argument('-b', '--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
 # --------------- Model options ---------------
-parser.add_argument('--model', type=str, default='../models/checkpoint.pth', metavar='S',
-                    help='uses previously saved model')
+parser.add_argument('--model', type=str, default='../models/checkpoint.pth',
+                    metavar='S', help='uses previously saved model')
 parser.add_argument('--n-features', type=int, default=80, metavar='N',
                     help='number of features for unet model')
 parser.add_argument('--truncation', type=float, default=3, metavar='F',
@@ -54,20 +54,20 @@ print('Seed: {:d}'.format(args.seed))
 
 num_gpus = torch.cuda.device_count()
 print('Device: {}'.format(args.device))
-if num_gpus > 1:
-    print("GPUs: {:d}".format(num_gpus))
 
 if use_cuda:
+    print('\nCUDA')
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cudnn.benchmark = args.benchmark
     kwargs = {'num_workers': num_gpus * args.workers, 'pin_memory': True}
-    print('Workers: {:d}'.format(args.workers))
+    print("Number of GPUs: {:d}".format(num_gpus))
+    print('Workers/GPU: {:d}'.format(args.workers))
     print('Benchmark: {}'.format(args.benchmark))
 
 # LOAD DATASETS
 print('\nLOADING DATASET.')
 
-test_data = MyDataset(args.dir, truncation=args.truncation)
+test_data = MyDataset(args.txt, truncation=args.truncation)
 print('Dataset truncation at: {:.1f}'.format(args.truncation))
 print('Dataset length: {:d}'.format(len(test_data)))
 print('Batch size: {:d} x {}'.format(args.batch_size,

@@ -14,10 +14,9 @@ class MyDataset(Dataset):
         self.truncation = truncation
         self.files = []
 
-        for root, _, files in os.walk(path):
-            for file in files:
-                if file.endswith('.h5'):
-                    self.files.append(os.path.join(root, file))
+        with open(path) as f:
+            for file in f:
+                self.files.append(file.strip())
 
     def __getitem__(self, key):
         if isinstance(key, slice):

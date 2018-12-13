@@ -13,10 +13,10 @@ parser = argparse.ArgumentParser(description='MyNet training script')
 # --------------- General options ---------------
 parser.add_argument('-x', '--expID', type=str, default='', metavar='S',
                     help='experiment ID')
-parser.add_argument('--dir', type=str, default='../datasets/train/', metavar='S',
-                    help='folder for training files')
+parser.add_argument('--txt', type=str, default='../datasets/train/files.txt',
+                    metavar='S', help='txt for training files')
 parser.add_argument('--workers', type=int, default=4, metavar='N',
-                    help='number of workers for the dataloader')
+                    help='number of workers for the dataloader per GPU')
 parser.add_argument('--benchmark', type=bool, default=True, metavar='B',
                     help='uses CUDNN benchmark')
 parser.add_argument('--no-cuda', action='store_true',
@@ -39,8 +39,8 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 parser.add_argument('--visdom', action='store_true',
                     help='enables VISDOM')
 # --------------- Optimization options ---------------
-parser.add_argument('--lr', '--learning-rate', type=float, default=1e-3, metavar='F',
-                    help='learning rate (default: 1e-3)')
+parser.add_argument('--lr', '--learning-rate', type=float, default=1e-3,
+                    metavar='F', help='learning rate (default: 1e-3)')
 parser.add_argument('--beta1', type=float, default=0.9, metavar='F',
                     help='first momentum coefficient (default: 0.9)')
 parser.add_argument('--beta2', type=float, default=0.999, metavar='F',
@@ -79,20 +79,20 @@ print('Seed: {:d}'.format(args.seed))
 
 num_gpus = torch.cuda.device_count()
 print('Device: {}'.format(args.device))
-if num_gpus > 1:
-    print("GPUs: {:d}".format(num_gpus))
 
 if use_cuda:
+    print('\nCUDA')
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cudnn.benchmark = args.benchmark
     kwargs = {'num_workers': num_gpus * args.workers, 'pin_memory': True}
-    print('Workers: {:d}'.format(args.workers))
+    print("Number of GPUs: {:d}".format(num_gpus))
+    print('Workers/GPU: {:d}'.format(args.workers))
     print('Benchmark: {}'.format(args.benchmark))
 
 # LOAD DATASETS
 print('\nLOADING DATASET & SAMPLER.')
 
-train_data = MyDataset(args.dir, truncation=args.truncation)
+train_data = MyDataset(args.txt, truncation=args.truncation)
 print('Dataset truncation at: {:.1f}'.format(args.truncation))
 
 train_sampler, val_sampler = train_data.subdivide_dataset(args.val_size,
