@@ -41,8 +41,12 @@ class MyDataset(Dataset):
         with h5py.File(self.files[index], 'r', libver='latest') as file:
             data = torch.from_numpy(file['data'][:]).float()
             data[0].abs_().clamp_(max=self.truncation)
-            target = torch.from_numpy(file['target'][:])\
-                          .float().clamp(max=self.truncation)
+            target = torch.from_numpy(file['target'][:]).float()
+            target[0].clamp_(max=self.truncation)
+
+            if data.shape[0] > 2:
+                data[1:4].div_(255)
+                target[1:].div_(255)
 
         return data, target
 

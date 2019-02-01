@@ -60,12 +60,13 @@ class MyNet(MyNN):
     A PyTorch implementation for shape completion
     """
 
-    def __init__(self, n_features=80, log_transform=True):
+    def __init__(self, n_features=80, log_transform=True, colored=True):
         super().__init__()
         self.log_transform = log_transform
+        self.channels = 5 if colored else 2
 
         # Encoder
-        self.enc1 = nn.Conv3d(2, n_features, 4, stride=2, padding=1)
+        self.enc1 = nn.Conv3d(self.channels, n_features, 4, stride=2, padding=1)
         self.bn1 = nn.BatchNorm3d(n_features)
         self.enc2 = nn.Conv3d(n_features, 2 * n_features, 4,
                               stride=2, padding=1)
@@ -93,7 +94,7 @@ class MyNet(MyNN):
         self.dec3 = nn.ConvTranspose3d(2 * 2 * n_features, n_features, 4,
                                        stride=2, padding=1)
         self.dbn3 = nn.BatchNorm3d(n_features)
-        self.dec4 = nn.ConvTranspose3d(2 * n_features, 1, 4,
+        self.dec4 = nn.ConvTranspose3d(2 * n_features, self.channels - 1, 4,
                                        stride=2, padding=1)
 
     def forward(self, x):
@@ -115,8 +116,8 @@ class MyNet(MyNN):
         d4 = torch.cat([dec3, enc1], dim=1)
         dec4 = self.dec4(d4)
 
-        out = dec4.abs()
+        dec4[:, 0].abs_()
         if self.log_transform:
-            out.add_(1).log_()
+            dec4[:, 0].add_(1).log_()
 
-        return out
+        return dec4

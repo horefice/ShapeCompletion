@@ -92,13 +92,13 @@ class Solver(object):
 
                 # Masked loss handling
                 if self.args['mask']:
-                    mask = inputs[:, [1]].eq(-1).float()  # unknown values
+                    mask = inputs[:, [-1]].eq(-1).float()  # unknown values
                     outputs.mul_(mask)
                     targets.mul_(mask)
 
                 # Log-Transform handling
                 if model.log_transform:
-                    targets.add_(1).log_()
+                    targets[:, 0].add_(1).log_()
 
                 # Compute loss and backward pass
                 loss = self.loss_func(outputs, targets)
@@ -190,7 +190,7 @@ class Solver(object):
 
                 # Masked loss handling
                 if self.args['mask']:
-                    unknown = inputs[:, [1]].eq(-1)  # unknown values
+                    unknown = inputs[:, [-1]].eq(-1)  # unknown values
                     close1 = outputs[:, [0]].le(threshold)
                     close2 = targets[:, [0]].le(threshold)
                     mask = (unknown & (close1 | close2)).float()
@@ -200,7 +200,7 @@ class Solver(object):
 
                 # Log-Transform handling
                 if model.log_transform:
-                    targets.add_(1).log_()
+                    targets[:, 0].add_(1).log_()
 
                 # Compute loss
                 batch_loss = float(self.loss_func(outputs, targets))

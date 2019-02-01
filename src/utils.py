@@ -96,6 +96,20 @@ def isosurface(M, v, step):
     return verts, faces
 
 
+def colored_isosurface(M, v, step):
+    verts, faces = isosurface(M[0], v, step)
+
+    colors = []
+    for face in faces:
+        color = [0,0,0]
+        for vert in face:
+            voxel = [int(i) for i in verts[vert]]
+            color += M[1:4,voxel[0],voxel[1],voxel[2]] # rgb
+            #print(color)
+        colors.append(np.append(color/3,[1])) # rgba
+    return verts, faces, colors
+
+
 def angelaEval(model, data_loader, progress_bar=False):
     import torch
     from tqdm import tqdm

@@ -6,9 +6,10 @@ import h5py
 import matplotlib.pyplot as plt
 
 from datetime import datetime
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D#
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from utils import isosurface, improveSDF, colored_isosurface
 from nn import MyNet
-from utils import isosurface, improveSDF
 
 
 def main(argmodel, argfile, n_samples=1, epoch=0, savedir=None, cb=None):
@@ -31,25 +32,37 @@ def main(argmodel, argfile, n_samples=1, epoch=0, savedir=None, cb=None):
 
     N = 64  # >1
     with h5py.File(argfile) as file:
-        inputs = torch.from_numpy(file['data'][()]).view(-1, 2, 32, 32, 32)
+        inputs = torch.from_numpy(file['data'][()]).view(-1, model.channels, 32, 32, 32)
 
         inputs = inputs[:N].float()
         inputs[:, 0].abs_().clamp_(max=3)
+        if inputs.shape[1] > 2:
+            inputs[:, 1:4].div_(255)
+
         try:
-            targets = file['target'][:N].astype(np.float32).squeeze().clip(max=3)  # (N,32,32,32)
+            targets = file['target'][:N].astype(np.float32)
+            np.clip(targets[:, 0], 0, 3, out=targets[:, 0])  # (N,1||4,32,32,32)
+            if len(targets.shape) > 4:
+                targets[:, 1:] /= 255
+            else:
+                targets[1:] /= 255
         except Exception as e:
+            print(e)
             targets = None
 
+
     with torch.no_grad():
-        result = model(inputs)
+        result = model(inputs).data.numpy()
 
     for n, i in enumerate(range(n_samples)):
+        improveSDF(result[i, 0])
+
         target = targets
-        if targets is not None and targets.ndim > 3:
+        if targets is not None and targets.ndim > 4:
             target = targets[i]
 
         (plot_3d if cb is None else cb)(inputs.data.numpy()[i],
-                                        improveSDF(result.data.numpy()[i, 0]),
+                                        result[i],
                                         target, n=n_samples, i=n,
                                         title='Demo - Epoch {:d}'.format(epoch))
 
@@ -64,31 +77,40 @@ def plot_3d(inputs, result, target=None, title='Demo', n=1, i=1):
 
     ax1 = fig.add_subplot(n, 3, 3 * i + 1, projection='3d')
     ax1.set_title('Input', y=1.1)
-    verts1, faces1 = isosurface(inputs[0], 1, 1)
-    ax1.plot_trisurf(verts1[:, 0], verts1[:, 1], faces1, verts1[:, 2],
-                     lw=1, cmap="Spectral")
+    verts1, faces1, colors1 = colored_isosurface(inputs, 1, 1)
+    coll1 = Poly3DCollection(verts1[faces1], facecolor=colors1, linewidths=0.1, edgecolors='k')
+    ax1.add_collection(coll1)
     ax1.view_init(elev=150, azim=-120)
+    ax1.set_xlim(0,32)
+    ax1.set_ylim(0,32)
+    ax1.set_zlim(0,32)
 
     ax2 = fig.add_subplot(n, 3, 3 * i + 2, projection='3d')
     ax2.set_title('Prediction', y=1.1)
-    verts2, faces2 = isosurface(result, 1, 1)
-    ax2.plot_trisurf(verts2[:, 0], verts2[:, 1], faces2, verts2[:, 2],
-                     lw=1, cmap="Spectral")
+    verts2, faces2, colors2 = colored_isosurface(result, 1, 1)
+    coll2 = Poly3DCollection(verts2[faces2], facecolor=np.clip(colors2,0,1), linewidths=0.1, edgecolors='k')
+    ax2.add_collection(coll2)
     ax2.view_init(elev=150, azim=-120)
+    ax2.set_xlim(0,32)
+    ax2.set_ylim(0,32)
+    ax2.set_zlim(0,32)
 
     if target is not None:
         ax3 = fig.add_subplot(n, 3, 3 * i + 3, projection='3d')
         ax3.set_title('Target', y=1.1)
-        verts3, faces3 = isosurface(target, 1, 1)
-        ax3.plot_trisurf(verts3[:, 0], verts3[:, 1], faces3, verts3[:, 2],
-                         lw=1, cmap="Spectral")
+        verts3, faces3, colors3 = colored_isosurface(target, 1, 1)
+        coll3 = Poly3DCollection(verts3[faces3], facecolor=colors3, linewidths=0.1, edgecolors='k')
+        ax3.add_collection(coll3)
         ax3.view_init(elev=150, azim=-120)
+        ax3.set_xlim(0,32)
+        ax3.set_ylim(0,32)
+        ax3.set_zlim(0,32)
 
         # Create translucid overlays between result and target
-        ax2.plot_trisurf(verts3[:, 0], verts3[:, 1], faces3, verts3[:, 2],
-                         lw=1, cmap="Spectral", alpha=0.2)
-        ax3.plot_trisurf(verts2[:, 0], verts2[:, 1], faces2, verts2[:, 2],
-                         lw=1, cmap="Spectral", alpha=0.2)
+        #ax2.plot_trisurf(verts3[:, 0], verts3[:, 1], faces3, verts3[:, 2],
+        #                 lw=1, cmap="Spectral", alpha=0.2)
+        #ax3.plot_trisurf(verts2[:, 0], verts2[:, 1], faces2, verts2[:, 2],
+        #                 lw=1, cmap="Spectral", alpha=0.2)
 
 
 if __name__ == '__main__':
