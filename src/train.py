@@ -48,24 +48,24 @@ parser.add_argument('--beta2', type=float, default=0.999, metavar='F',
 parser.add_argument('--epsilon', type=float, default=1e-8, metavar='F',
                     help='for numerical stability (default: 1e-8)')
 parser.add_argument('--weight-decay', type=float, default=0, metavar='F',
-                    help='L2 penalty/regularization')
+                    help='L2 penalty/regularization (default: 0)')
 parser.add_argument('--scheduler-step', type=int, default=20, metavar='N',
-                    help='period of learning rate decay')
+                    help='period of learning rate decay (default: 20)')
 parser.add_argument('--scheduler-gamma', type=float, default=0.5, metavar='F',
-                    help='multiplicative factor of learning rate decay')
+                    help='multiplicative learning rate decay factor (default: 0.5)')
 # --------------- Model options ---------------
 parser.add_argument('--model', type=str, default='', metavar='S',
                     help='uses previously saved model')
 parser.add_argument('--n-features', type=int, default=80, metavar='N',
-                    help='number of features for unet model')
+                    help='number of features for unet model (default: 80)')
 parser.add_argument('--truncation', type=float, default=3.0, metavar='F',
                     help='truncation value for distance field (default: 3)')
 parser.add_argument('--log-transform', type=bool, default=True, metavar='B',
-                    help='uses log tranformation')
+                    help='uses log tranformation (default: True)')
 parser.add_argument('--mask', type=bool, default=True, metavar='B',
-                    help='mask out known values')
+                    help='mask out known values (default: True)')
 parser.add_argument('--colored', type=bool, default=True, metavar='B',
-                    help='uses model with color information')
+                    help='uses model with color information (default: True)')
 
 # SETUP
 print('SETUP')
@@ -79,7 +79,6 @@ torch.manual_seed(args.seed)
 kwargs = {}
 print('Seed: {:d}'.format(args.seed))
 
-num_gpus = torch.cuda.device_count()
 print('Device: {}'.format(args.device))
 
 if use_cuda:
@@ -87,6 +86,7 @@ if use_cuda:
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cudnn.benchmark = args.benchmark
     kwargs = {'num_workers': num_gpus * args.workers, 'pin_memory': True}
+    num_gpus = torch.cuda.device_count()
     print("Number of GPUs: {:d}".format(num_gpus))
     print('Workers/GPU: {:d}'.format(args.workers))
     print('Benchmark: {}'.format(args.benchmark))
@@ -115,7 +115,7 @@ checkpoint = {}
 if args.model:
     checkpoint.update(torch.load(args.model, map_location=args.device))
     model.load_state_dict(checkpoint['model'])
-if num_gpus > 1:
+if use_cuda && num_gpus > 1:
     model = MyDataParallel(model)
 model.to(args.device)
 print('Network parameters: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))

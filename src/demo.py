@@ -6,7 +6,7 @@ import h5py
 import matplotlib.pyplot as plt
 
 from datetime import datetime
-from mpl_toolkits.mplot3d import Axes3D#
+from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from utils import isosurface, improveSDF, colored_isosurface
 from nn import MyNet
@@ -52,7 +52,12 @@ def main(argmodel, argfile, n_samples=1, epoch=0, savedir=None, cb=None):
 
 
     with torch.no_grad():
-        result = model(inputs).data.numpy()
+        result = model(inputs)
+        #mask1 = inputs[:, [-1]].eq(1).float()  # position of known values
+        #mask2 = inputs[:, [-1]].eq(-1).float()  # position of unknown values
+        #result = result.mul(mask2)
+        #result = result + torch.from_numpy(targets).mul(mask1)
+        result = result.data.numpy()
 
     for n, i in enumerate(range(n_samples)):
         improveSDF(result[i, 0])
