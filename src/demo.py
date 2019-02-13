@@ -53,11 +53,8 @@ def main(argmodel, argfile, n_samples=1, epoch=0, savedir=None, cb=None):
 
     with torch.no_grad():
         result = model(inputs)
-        #mask1 = inputs[:, [-1]].eq(1).float()  # position of known values
-        #mask2 = inputs[:, [-1]].eq(-1).float()  # position of unknown values
-        #result = result.mul(mask2)
-        #result = result + torch.from_numpy(targets).mul(mask1)
-        result = result.data.numpy()
+        mask = inputs[:, [-1]].eq(1)  # position of known values
+        result = result.mul((~mask).float()) + inputs[:,:4].mul(mask.float())
 
     for n, i in enumerate(range(n_samples)):
         improveSDF(result[i, 0])
@@ -67,7 +64,7 @@ def main(argmodel, argfile, n_samples=1, epoch=0, savedir=None, cb=None):
             target = targets[i]
 
         (plot_3d if cb is None else cb)(inputs.data.numpy()[i],
-                                        result[i],
+                                        result.data.numpy()[i],
                                         target, n=n_samples, i=n,
                                         title='Demo - Epoch {:d}'.format(epoch))
 
