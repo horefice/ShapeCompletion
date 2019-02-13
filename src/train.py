@@ -115,7 +115,7 @@ checkpoint = {}
 if args.model:
     checkpoint.update(torch.load(args.model, map_location=args.device))
     model.load_state_dict(checkpoint['model'])
-if use_cuda && num_gpus > 1:
+if use_cuda and num_gpus > 1:
     model = MyDataParallel(model)
 model.to(args.device)
 print('Network parameters: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
