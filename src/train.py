@@ -85,8 +85,8 @@ if use_cuda:
     print('\nCUDA')
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cudnn.benchmark = args.benchmark
-    kwargs = {'num_workers': num_gpus * args.workers, 'pin_memory': True}
     num_gpus = torch.cuda.device_count()
+    kwargs = {'num_workers': num_gpus * args.workers, 'pin_memory': True}
     print("Number of GPUs: {:d}".format(num_gpus))
     print('Workers/GPU: {:d}'.format(args.workers))
     print('Benchmark: {}'.format(args.benchmark))

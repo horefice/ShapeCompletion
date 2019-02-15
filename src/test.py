@@ -39,6 +39,8 @@ parser.add_argument('--log-transform', type=bool, default=False, metavar='B',
                     help='uses log tranformation')
 parser.add_argument('--mask', type=bool, default=True, metavar='B',
                     help='mask out known values')
+parser.add_argument('--colored', type=bool, default=True, metavar='B',
+                    help='uses model with color information (default: True)')
 
 # SETUP
 print('SETUP')
@@ -77,7 +79,7 @@ print('LOADED.')
 # LOAD MODEL & SOLVER
 print('\nLOADING NETWORK & SOLVER.')
 
-model = MyNet(n_features=args.n_features)  # log-transform will be overwritten
+model = MyNet(n_features=args.n_features, colored=args.colored)  # log-transform will be overwritten
 checkpoint = torch.load(args.model, map_location=args.device)
 model.load_state_dict(checkpoint['model'])
 model.log_transform = args.log_transform
