@@ -38,15 +38,19 @@ class MyDataset(Dataset):
         return len(self.files)
 
     def get_item_from_index(self, index):
-        with h5py.File(self.files[index], 'r', libver='latest') as file:
-            data = torch.from_numpy(file['data'][:]).float()
-            data[0].abs_().clamp_(max=self.truncation)
-            target = torch.from_numpy(file['target'][:]).float()
-            target[0].clamp_(max=self.truncation)
+        try:
+            with h5py.File(self.files[index], 'r', libver='latest') as file:
+                data = torch.from_numpy(file['data'][:]).float()
+                target = torch.from_numpy(file['target'][:]).float()
+        except:
+            print(self.files[index])
 
-            if data.shape[0] > 2:
-                data[1:4].div_(255)
-                target[1:].div_(255)
+        data[0].abs_().clamp_(max=self.truncation)
+        target[0].clamp_(max=self.truncation)
+
+        if data.shape[0] > 2:
+            data[1:4].div_(255)
+            target[1:].div_(255)
 
         return data, target
 
