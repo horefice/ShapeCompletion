@@ -61,6 +61,8 @@ class Solver(object):
                                    }, False)
 
         device = torch.device("cuda:0" if model.is_cuda else "cpu")
+        use_mask = self.args['mask']
+        use_log_transform = model.log_transform
 
         if self.visdom:
             iter_plot = self.visdom.create_plot('Epoch', 'Loss',
@@ -91,13 +93,13 @@ class Solver(object):
                 outputs = model(inputs)
 
                 # Masked loss handling
-                if self.args['mask']:
+                if use_mask:
                     mask = inputs[:, [-1]].eq(-1).float()  # unknown values
                     outputs.mul_(mask)
                     targets.mul_(mask)
 
                 # Log-Transform handling
-                if model.log_transform:
+                if use_log_transform:
                     targets[:, 0].add_(1).log_()
 
                 # Compute loss and backward pass
@@ -107,7 +109,7 @@ class Solver(object):
 
                 # Update progress
                 batch_loss = float(loss)
-                batch_loss /= mask.sum().item() if self.args['mask'] else mask.numel()
+                batch_loss /= mask.sum().item() if use_mask else mask.numel()
                 self.train_loss_history.append(batch_loss)
 
                 # Logging iteration
@@ -165,7 +167,7 @@ class Solver(object):
                 # demo(model, '../datasets/test100.h5', epoch=epoch + 1,
                 #     n_samples=15, savedir=self.args['saveDir'])
 
-    def eval(self, model, data_loader, threshold=2.5, progress_bar=False):
+    def eval(self, model, data_loader, threshold=2.5, geometry_only=False, progress_bar=False):
         """
         Compute the loss for a given model with the provided data.
 
@@ -179,6 +181,9 @@ class Solver(object):
         device = torch.device("cuda:0" if model.is_cuda else "cpu")
         pb = tqdm(total=len(data_loader), desc="EVAL", leave=progress_bar)
 
+        use_mask = self.args['mask']
+        use_log_transform = model.log_transform
+
         model.eval()
         with torch.no_grad():
             for (inputs, targets) in data_loader:
@@ -189,7 +194,7 @@ class Solver(object):
                 outputs = model(inputs)
 
                 # Masked loss handling
-                if self.args['mask']:
+                if use_mask:
                     unknown = inputs[:, [-1]].eq(-1)  # unknown values
                     close1 = outputs[:, [0]].le(threshold)
                     close2 = targets[:, [0]].le(threshold)
@@ -199,8 +204,13 @@ class Solver(object):
                     targets.mul_(mask)
 
                 # Log-Transform handling
-                if model.log_transform:
+                if use_log_transform:
                     targets[:, 0].add_(1).log_()
+
+                # Geometry only evaluation
+                if geometry_only:
+                    outputs = outputs[:, [0]]
+                    targets = targets[:, [0]]
 
                 # Compute loss
                 batch_loss = float(self.loss_func(outputs, targets))

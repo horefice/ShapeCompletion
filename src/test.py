@@ -100,7 +100,7 @@ test_loader = torch.utils.data.DataLoader(test_data,
                                           shuffle=False, **kwargs)
 
 test_err = solver.eval(model, test_loader, threshold=args.threshold,
-                       progress_bar=True)
+                       geometry_only=True, progress_bar=True)
 print('Test error: {:.3e}'.format(test_err))
 print('FINISH.')
 
