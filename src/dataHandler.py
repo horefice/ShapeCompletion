@@ -42,8 +42,9 @@ class MyDataset(Dataset):
             with h5py.File(self.files[index], 'r', libver='latest') as file:
                 data = torch.from_numpy(file['data'][:]).float()
                 target = torch.from_numpy(file['target'][:]).float()
-        except:
+        except Exception as e:
             print(self.files[index])
+            print(e)
 
         data[0].abs_().clamp_(max=self.truncation)
         target[0].clamp_(max=self.truncation)
@@ -52,6 +53,7 @@ class MyDataset(Dataset):
             data[1:4].div_(255)
             target[1:].div_(255)
 
+        #print(self.files[index], data.shape, target.shape)
         return data, target
 
     def subdivide_dataset(self, val_size, shuffle=False, seed=1):

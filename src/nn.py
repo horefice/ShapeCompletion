@@ -121,3 +121,57 @@ class MyNet(MyNN):
             dec4[:, 0].add_(1).log_()
 
         return dec4
+
+
+class AENet(MyNN):
+    def __init__(self, n_features=16):
+        super().__init__()
+        self.encoder = torch.nn.Sequential(
+            torch.nn.Conv3d(4, n_features, 4, 2, 1),
+            torch.nn.Conv3d(n_features, n_features * 2, 4, 2, 1),
+            torch.nn.Conv3d(n_features * 2, n_features * 4, 4, 2, 1),
+            torch.nn.Conv3d(n_features * 4, n_features * 8, 4, 1, 0))
+        self.decoder = torch.nn.Sequential(
+            torch.nn.ConvTranspose3d(n_features * 8, n_features * 4, 4, 1, 0),
+            torch.nn.ConvTranspose3d(n_features * 4, n_features * 2, 4, 2, 1),
+            torch.nn.ConvTranspose3d(n_features * 2, n_features, 4, 2, 1),
+            torch.nn.ConvTranspose3d(n_features, 4, 4, 2, 1))
+
+    def reparametrize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return eps.mul(std).add_(mu)
+
+    def forward(self, x):
+        z = self.encoder(x)
+        return self.decoder(z) if self.training else z
+
+
+class DeepSDF(MyNN):
+    def __init__(self, code_length, n_features=16):
+        super().__init__()
+        self.block1 = self._generate_block(code_length + 3, n_features)
+        self.block2 = self._generate_block(n_features + 3, 1)
+
+    def _generate_block(self, n_in, n_out, n=512):
+        activation = torch.nn.ReLU()
+        last_activation = torch.nn.ReLU() if n_out != 1 else torch.nn.Tanh()
+
+        seq = torch.nn.Sequential(
+            torch.nn.Linear(n_in, n),
+            activation,
+            torch.nn.Linear(n, n),
+            activation,
+            torch.nn.Linear(n, n),
+            activation,
+            torch.nn.Linear(n, n_out),
+            last_activation
+        )
+
+        return seq
+
+    def forward(self, x):
+        mid = self.block1(x)
+        cat = torch.cat([mid, x[:, -3:]], dim=1)
+        out = self.block2(cat).squeeze()
+        return out
