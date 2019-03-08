@@ -48,8 +48,8 @@ parser.add_argument('--beta2', type=float, default=0.999, metavar='F',
                     help='second momentum coefficient (default: 0.999)')
 parser.add_argument('--epsilon', type=float, default=1e-8, metavar='F',
                     help='for numerical stability (default: 1e-8)')
-parser.add_argument('--weight-decay', type=float, default=1e-2, metavar='F',
-                    help='L2 penalty/regularization (default: 1e-2)')
+parser.add_argument('--weight-decay', type=float, default=1e-4, metavar='F',
+                    help='L2 penalty/regularization (default: 1e-4)')
 # --------------- Model options ---------------
 parser.add_argument('--codenet', type=str, default='../models/AENet.pth', metavar='S',
                     help='uses previously saved model')
@@ -120,6 +120,7 @@ else:
     import sys
     sys.exit(0)
 
+dim = 32
 model = DeepSDF(code_length=code_length, n_features=args.n_features)
 checkpoint = {}
 if args.model:
@@ -140,8 +141,8 @@ train_loader = torch.utils.data.DataLoader(train_data, sampler=train_sampler,
 val_loader = torch.utils.data.DataLoader(train_data, sampler=val_sampler,
                                          batch_size=args.batch_size, **kwargs)
 
-optim = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
-loss_func = torch.nn.MSELoss(reduction='mean')
+optim = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.weight_decay)
+loss_func = torch.nn.L1Loss(reduction='mean')
 iter_per_epoch = len(train_loader)
 train_loss_history = []
 val_loss_history = []
@@ -159,30 +160,36 @@ for epoch in range(start_epoch, args.epochs):
     for i, (_, full_inputs) in enumerate(train_loader, 1):
         # Prepare data
         inputs = full_inputs.float().to(device)
+        mask = inputs[:, [0]].eq(3).float()  # position of truncated values
+        batch_size = len(inputs)
 
         # Code and query generation
-        code = codenet(inputs).squeeze()
-        samples = sample_points(inputs, 100)
+        code = codenet(inputs)
+        #samples = sample_points(batch_size, 10000)
 
         # Prepare for forward pass
         model.train()
         optim.zero_grad()
         losses = []
         batch_loss = 0
-        for sample in samples:
 
-            # Prepare targets
-            targets = torch.FloatTensor((len(sample)))
-            for j in range(len(sample)):
-                targets[j] = inputs[j, 0, sample[j, -3], sample[j, -2], sample[j, -1]]
-            targets.to(device)
+        for k in range(dim):
+            for j in range(dim):
+                for i in range(dim):
+                    for b in range(batch_size):
+                        if mask[b, 0, i, j, k] == 1:
+                            continue
 
-            # Forward pass
-            x = torch.cat([code, torch.from_numpy(sample).float()], dim=1).to(device)
-            outputs = model(x)
+                        targets = inputs[b, 0, i, j, k]
 
-            # Compute loss
-            losses.append(loss_func(outputs, targets))
+                        # Forward pass
+                        x = torch.cat([code[[b]], torch.Tensor([[i, j, k]])], dim=1).to(device)
+                        outputs = model(x)
+
+                        # Compute loss
+                        #print(outputs, targets)
+                        loss = loss_func(outputs, targets)
+                        losses.append(loss)
 
         total_loss = sum(losses)
         total_loss.backward()

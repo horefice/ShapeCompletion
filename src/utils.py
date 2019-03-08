@@ -193,5 +193,5 @@ def improveSDF(sdf, num_it=1, dim=32):
 
     return sdf
 
-def sample_points(batch, N=100):
-    return np.random.randint(0, high=31, size=(N, batch.size(0), 3))
+def sample_points(batch_size, N=100):
+    return np.random.randint(0, high=31, size=(N, batch_size, 3))

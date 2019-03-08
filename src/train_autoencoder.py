@@ -48,8 +48,8 @@ parser.add_argument('--beta2', type=float, default=0.999, metavar='F',
                     help='second momentum coefficient (default: 0.999)')
 parser.add_argument('--epsilon', type=float, default=1e-8, metavar='F',
                     help='for numerical stability (default: 1e-8)')
-parser.add_argument('--weight-decay', type=float, default=1e-2, metavar='F',
-                    help='L2 penalty/regularization (default: 1e-2)')
+parser.add_argument('--weight-decay', type=float, default=1e-4, metavar='F',
+                    help='L2 penalty/regularization (default: 1e-4)')
 # --------------- Model options ---------------
 parser.add_argument('--model', type=str, default='', metavar='S',
                     help='uses previously saved model')
@@ -149,10 +149,12 @@ for epoch in range(start_epoch, args.epochs):
         # Forward pass
         model.train()
         optim.zero_grad()
-        outputs = model(inputs)
+        outputs, mu, logvar = model(inputs)
 
         # Compute loss and backward pass
-        loss = loss_func(outputs, inputs)
+        BCE = loss_func(outputs, inputs)
+        KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+        loss = BCE + KLD
         loss.backward()
         optim.step()
 

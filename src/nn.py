@@ -123,49 +123,86 @@ class MyNet(MyNN):
         return dec4
 
 
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
+
+class UnFlatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1, 1, 1, 1)
+
+
 class AENet(MyNN):
     def __init__(self, n_features=16):
         super().__init__()
-        self.encoder = torch.nn.Sequential(
-            torch.nn.Conv3d(4, n_features, 4, 2, 1),
-            torch.nn.Conv3d(n_features, n_features * 2, 4, 2, 1),
-            torch.nn.Conv3d(n_features * 2, n_features * 4, 4, 2, 1),
-            torch.nn.Conv3d(n_features * 4, n_features * 8, 4, 1, 0))
-        self.decoder = torch.nn.Sequential(
-            torch.nn.ConvTranspose3d(n_features * 8, n_features * 4, 4, 1, 0),
-            torch.nn.ConvTranspose3d(n_features * 4, n_features * 2, 4, 2, 1),
-            torch.nn.ConvTranspose3d(n_features * 2, n_features, 4, 2, 1),
-            torch.nn.ConvTranspose3d(n_features, 4, 4, 2, 1))
+        self.encoder = nn.Sequential(
+            nn.Conv3d(4, n_features, 4, 2, 1),
+            nn.ReLU(),
+            nn.Conv3d(n_features, n_features * 2, 4, 2, 1),
+            nn.ReLU(),
+            nn.Conv3d(n_features * 2, n_features * 4, 4, 2, 1),
+            nn.ReLU(),
+            nn.Conv3d(n_features * 4, n_features * 8, 4, 1, 0),
+            nn.ReLU(),
+            Flatten())
 
-    def reparametrize(self, mu, logvar):
+        self.fc1 = nn.Linear(8*n_features, 8*n_features)
+        self.fc2 = nn.Linear(8*n_features, 8*n_features)
+        self.fc3 = nn.Linear(8*n_features, 8*n_features)
+
+        self.decoder = nn.Sequential(
+            UnFlatten(),
+            nn.ConvTranspose3d(n_features * 8, n_features * 4, 4, 1, 0),
+            nn.ReLU(),
+            nn.ConvTranspose3d(n_features * 4, n_features * 2, 4, 2, 1),
+            nn.ReLU(),
+            nn.ConvTranspose3d(n_features * 2, n_features, 4, 2, 1),
+            nn.ReLU(),
+            nn.ConvTranspose3d(n_features, 4, 4, 2, 1),
+            nn.Sigmoid())
+
+    def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
-        return eps.mul(std).add_(mu)
+        return eps.mul(std).add(mu)
+
+    def bottleneck(self, h):
+        mu, logvar = self.fc1(h), self.fc2(h)
+        z = self.reparameterize(mu, logvar)
+        return z, mu, logvar
+
+    def decode(self, z):
+        z = self.fc3(z)
+        z = self.decoder(z)
+        return z
 
     def forward(self, x):
-        z = self.encoder(x)
-        return self.decoder(z) if self.training else z
+        h = self.encoder(x)
+        if not self.training:
+            return h
+        z, mu, logvar = self.bottleneck(h)
+        return 3*self.decode(z), mu, logvar
 
 
 class DeepSDF(MyNN):
-    def __init__(self, code_length, n_features=16):
+    def __init__(self, code_length, n_features=128):
         super().__init__()
-        self.block1 = self._generate_block(code_length + 3, n_features)
-        self.block2 = self._generate_block(n_features + 3, 1)
+        self.block1 = self._generate_block(code_length + 3, n_features, n_features)
+        self.block2 = self._generate_block(n_features + 3, 1, n_features)
 
     def _generate_block(self, n_in, n_out, n=512):
-        activation = torch.nn.ReLU()
-        last_activation = torch.nn.ReLU() if n_out != 1 else torch.nn.Tanh()
+        activation = nn.Sequential(nn.ReLU(), nn.Dropout())
 
-        seq = torch.nn.Sequential(
-            torch.nn.Linear(n_in, n),
+        seq = nn.Sequential(
+            nn.Linear(n_in, n),
             activation,
-            torch.nn.Linear(n, n),
+            nn.Linear(n, n),
             activation,
-            torch.nn.Linear(n, n),
+            nn.Linear(n, n),
             activation,
-            torch.nn.Linear(n, n_out),
-            last_activation
+            nn.Linear(n, n_out),
+            activation if n_out != 1 else nn.Sigmoid()
         )
 
         return seq
@@ -173,5 +210,5 @@ class DeepSDF(MyNN):
     def forward(self, x):
         mid = self.block1(x)
         cat = torch.cat([mid, x[:, -3:]], dim=1)
-        out = self.block2(cat).squeeze()
+        out = 3*self.block2(cat).squeeze()
         return out
