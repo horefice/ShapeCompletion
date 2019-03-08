@@ -17,7 +17,7 @@ from utils import AverageMeter, improveSDF, sample_points
 def main(argcodenet, argmodel, argfile, upscale=1):
     device = torch.device('cpu')
 
-    codenet = AENet(n_features=16)
+    codenet = AENet(n_features=32)
     codenet.load_state_dict(torch.load(argcodenet, map_location=device)['model'])
     codenet.eval()
     codenet.to(device)

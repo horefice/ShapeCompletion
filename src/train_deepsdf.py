@@ -55,8 +55,8 @@ parser.add_argument('--codenet', type=str, default='../models/AENet.pth', metava
                     help='uses previously saved model')
 parser.add_argument('--model', type=str, default='', metavar='S',
                     help='uses previously saved model')
-parser.add_argument('--n-features', type=int, default=128, metavar='N',
-                    help='number of features for unet model (default: 128)')
+parser.add_argument('--n-features', type=int, default=512, metavar='N',
+                    help='number of features for unet model (default: 512)')
 parser.add_argument('--truncation', type=float, default=3.0, metavar='F',
                     help='truncation value for distance field (default: 3)')
 parser.add_argument('--log-transform', type=bool, default=True, metavar='B',
@@ -65,6 +65,7 @@ parser.add_argument('--mask', type=bool, default=True, metavar='B',
                     help='mask out known values (default: True)')
 parser.add_argument('--colored', type=bool, default=True, metavar='B',
                     help='uses model with color information (default: True)')
+
 # SETUP
 print('SETUP')
 args = parser.parse_args()
@@ -230,7 +231,7 @@ for epoch in range(start_epoch, args.epochs):
 
     # Epoch logging
     print('[Epoch {:d}/{:d}] TRAIN loss: {:.2e}'.format(epoch + 1, args.epochs, np.mean(train_loss_history[-iter_per_epoch:])))
-    print('[Epoch {:d}/{:d}] VAL   loss: {:.2e}'.format(epoch + 1, args.epochs, val_loss_history[-1]))
+    #print('[Epoch {:d}/{:d}] VAL   loss: {:.2e}'.format(epoch + 1, args.epochs, val_loss_history[-1]))
 
 # Plot
 if False:

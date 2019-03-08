@@ -129,7 +129,7 @@ if __name__ == '__main__':
                                             help='disables plots (only saves)')
     args = parser.parse_args()
 
-    main(args.model, args.input, args.n_samples, savedir="./")
+    main(args.model, args.input, args.n_samples)
     if args.no_plot:
         quit()
 

@@ -48,8 +48,8 @@ parser.add_argument('--beta2', type=float, default=0.999, metavar='F',
                     help='second momentum coefficient (default: 0.999)')
 parser.add_argument('--epsilon', type=float, default=1e-8, metavar='F',
                     help='for numerical stability (default: 1e-8)')
-parser.add_argument('--weight-decay', type=float, default=1e-4, metavar='F',
-                    help='L2 penalty/regularization (default: 1e-4)')
+parser.add_argument('--weight-decay', type=float, default=1e-2, metavar='F',
+                    help='L2 penalty/regularization (default: 1e-2)')
 # --------------- Model options ---------------
 parser.add_argument('--model', type=str, default='', metavar='S',
                     help='uses previously saved model')
@@ -152,9 +152,9 @@ for epoch in range(start_epoch, args.epochs):
         outputs, mu, logvar = model(inputs)
 
         # Compute loss and backward pass
-        BCE = loss_func(outputs, inputs)
+        MSE = loss_func(outputs, inputs)
         KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
-        loss = BCE + KLD
+        loss = MSE + KLD
         loss.backward()
         optim.step()
 
@@ -169,10 +169,10 @@ for epoch in range(start_epoch, args.epochs):
                   iter_per_epoch * args.epochs, mean_nth_loss))
 
         # Validation
+        continue
         if i % (iter_per_epoch / (args.sub_epochs + 1)) < 1:
             sub_val_loss = AverageMeter()
 
-            model.log_transform = False
             model.eval()
             with torch.no_grad():
                 for (_, inputs) in val_loader:
@@ -194,7 +194,7 @@ for epoch in range(start_epoch, args.epochs):
 
     # Epoch logging
     print('[Epoch {:d}/{:d}] TRAIN loss: {:.2e}'.format(epoch + 1, args.epochs, np.mean(train_loss_history[-iter_per_epoch:])))
-    print('[Epoch {:d}/{:d}] VAL   loss: {:.2e}'.format(epoch + 1, args.epochs, val_loss_history[-1]))
+    #print('[Epoch {:d}/{:d}] VAL   loss: {:.2e}'.format(epoch + 1, args.epochs, val_loss_history[-1]))
 
 # Plot
 if False:

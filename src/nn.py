@@ -138,14 +138,19 @@ class AENet(MyNN):
         super().__init__()
         self.encoder = nn.Sequential(
             nn.Conv3d(4, n_features, 4, 2, 1),
-            nn.ReLU(),
+            nn.BatchNorm3d(n_features),
+            nn.ReLU(inplace=True),
             nn.Conv3d(n_features, n_features * 2, 4, 2, 1),
-            nn.ReLU(),
+            nn.BatchNorm3d(n_features * 2),
+            nn.ReLU(inplace=True),
             nn.Conv3d(n_features * 2, n_features * 4, 4, 2, 1),
-            nn.ReLU(),
+            nn.BatchNorm3d(n_features * 4),
+            nn.ReLU(inplace=True),
             nn.Conv3d(n_features * 4, n_features * 8, 4, 1, 0),
-            nn.ReLU(),
-            Flatten())
+            nn.BatchNorm3d(n_features * 8),
+            nn.ReLU(inplace=True),
+            Flatten()
+            )
 
         self.fc1 = nn.Linear(8*n_features, 8*n_features)
         self.fc2 = nn.Linear(8*n_features, 8*n_features)
@@ -154,13 +159,17 @@ class AENet(MyNN):
         self.decoder = nn.Sequential(
             UnFlatten(),
             nn.ConvTranspose3d(n_features * 8, n_features * 4, 4, 1, 0),
-            nn.ReLU(),
+            nn.BatchNorm3d(n_features * 4),
+            nn.ReLU(inplace=True),
             nn.ConvTranspose3d(n_features * 4, n_features * 2, 4, 2, 1),
-            nn.ReLU(),
+            nn.BatchNorm3d(n_features * 2),
+            nn.ReLU(inplace=True),
             nn.ConvTranspose3d(n_features * 2, n_features, 4, 2, 1),
-            nn.ReLU(),
+            nn.BatchNorm3d(n_features),
+            nn.ReLU(inplace=True),
             nn.ConvTranspose3d(n_features, 4, 4, 2, 1),
-            nn.Sigmoid())
+            nn.Sigmoid()
+            )
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
@@ -179,14 +188,13 @@ class AENet(MyNN):
 
     def forward(self, x):
         h = self.encoder(x)
-        if not self.training:
-            return h
+        #return self.decoder(h).add(1).log(), 1, 1
         z, mu, logvar = self.bottleneck(h)
-        return 3*self.decode(z), mu, logvar
+        return 3*self.decode(h), mu, logvar
 
 
 class DeepSDF(MyNN):
-    def __init__(self, code_length, n_features=128):
+    def __init__(self, code_length, n_features=512):
         super().__init__()
         self.block1 = self._generate_block(code_length + 3, n_features, n_features)
         self.block2 = self._generate_block(n_features + 3, 1, n_features)
