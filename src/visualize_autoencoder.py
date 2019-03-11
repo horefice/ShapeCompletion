@@ -27,7 +27,7 @@ def main(argmodel, argfile, upscale=1):
 
     with torch.no_grad():
         results, mu, logvar = codenet(inputs[:, 0:4])
-    print(torch.min(results), torch.max(results), inputs[0,0,13:18,13:18,13:18], results[0,0,13:18,13:18,13:18])
+    #print(torch.min(results), torch.max(results), inputs[0,0,13:18,13:18,13:18], results[0,0,13:18,13:18,13:18])
     improveSDF(results[0,0],3)
     plot(inputs.data.numpy()[0], results.abs().clamp(max=3).data.numpy()[0])
 

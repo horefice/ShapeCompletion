@@ -30,7 +30,7 @@ class MyDataset(Dataset):
             if key < 0 or key >= len(self):
                 raise IndexError("The index (%d) is out of range." % key)
             # get the data from direct index
-            return self.get_item_from_index(key)
+            return self.get_item_from_index2(key)
         else:
             raise TypeError("Invalid argument type.")
 
@@ -52,6 +52,21 @@ class MyDataset(Dataset):
         if data.shape[0] > 2:
             data[1:4].div_(255)
             target[1:].div_(255)
+
+        #print(self.files[index], data.shape, target.shape)
+        return data, target
+
+    def get_item_from_index2(self, index):
+        try:
+            with h5py.File(self.files[index], 'r', libver='latest') as file:
+                data = torch.from_numpy(file['pc'][:]).float().squeeze()
+                target = torch.from_numpy(file['sdf'][:]).float()
+        except Exception as e:
+            print(self.files[index])
+            print(e)
+
+        target[0].clamp_(min=-self.truncation, max=self.truncation)
+        target[1:4].div_(255)
 
         #print(self.files[index], data.shape, target.shape)
         return data, target

@@ -22,36 +22,50 @@ def main(argcodenet, argmodel, argfile, upscale=1):
     codenet.eval()
     codenet.to(device)
 
-    model = DeepSDF(code_length=128, n_features=128)
+    model = DeepSDF(code_length=256, n_features=512)
     model.load_state_dict(torch.load(argmodel, map_location=device)['model'])
     model.eval()
     model.to(device)
 
     with h5py.File(argfile) as file:
-        inputs = torch.from_numpy(file['data'][()]).view(5, 32, 32, 32).float()
+        inputs = torch.from_numpy(file['pc'][()]).float()
 
-        targets = file['target'][()].astype(np.float32)
-        np.clip(targets[0], 0, 3, out=targets[0])  # (N,1||4,32,32,32)
+        targets = file['sdf'][()].astype(np.float32)
+        np.clip(targets[0], -3, 3, out=targets[0])  # (N,1||4,32,32,32)
         targets[1:4] /= 255
 
     with torch.no_grad():
-        code = codenet(inputs[0:4].unsqueeze(0))
+        code = codenet(inputs)
 
         results = torch.zeros(4, 32, 32, 32)
         mask = inputs[[-1]].eq(1).float()  # position of known values
 
-        grid_res = range(upscale*32)
-        for k in grid_res:
-            for j in grid_res:
-                for i in grid_res:
-                    if mask[-1, i, j, k] == 1:
-                        results[:, i, j, k] == inputs[0:4, i, j, k]
-                    else:
-                        cat = torch.cat([code.view(1,128), torch.Tensor([[i, j, k]])], dim=1)
-                        result = model(cat)
+        for s in range(sample_size):
+            for b in range(batch_size):
+                i = round(samples[b, s, 0].item())
+                j = round(samples[b, s, 1].item())
+                k = round(samples[b, s, 2].item())
+                #print(b, s, i, j, k)
+
+                if mask[-1, i, j, k] == 1:
+                    results[:, i, j, k] == inputs[0:4, i, j, k]
+                else:
+                    x = torch.cat([code[[b]], torch.Tensor([[i, j, k]])], dim=1).to(device)
+                    outputs = model(x)
+                    targets = inputs[b, 0, i, j, k]
+
+        #grid_res = range(upscale*32)
+        #for k in grid_res:
+        #    for j in grid_res:
+        #        for i in grid_res:
+        #            if mask[-1, i, j, k] == 1:
+        #                results[:, i, j, k] == inputs[0:4, i, j, k]
+        #            else:
+        #                cat = torch.cat([code.view(1,128), torch.Tensor([[i, j, k]])], dim=1)
+        #                result = model(cat)
                         #print(cat, result)
-                        results[0, i, j, k] = result
-                        results[1:4, i, j, k] = 0.8
+        #                results[0, i, j, k] = result
+        #                results[1:4, i, j, k] = 0.8
 
     improveSDF(results[0])
     plot(inputs.data.numpy(), results.data.numpy(), targets)

@@ -2,6 +2,7 @@
 import argparse
 import torch
 import numpy as np
+import math
 import os
 
 from nn import AENet, DeepSDF
@@ -112,7 +113,7 @@ print('\nLOADING NETWORK.')
 if args.codenet:
     checkpoint = {}
     checkpoint.update(torch.load(args.codenet, map_location=args.device))
-    code_length = 128
+    code_length = 256
     codenet = AENet(n_features=int(code_length/8))
     codenet.load_state_dict(checkpoint['model'])
     codenet.eval()
@@ -158,47 +159,68 @@ if len(checkpoint) > 0:
 
 device = torch.device("cuda:0" if model.is_cuda else "cpu")
 for epoch in range(start_epoch, args.epochs):
-    for i, (_, full_inputs) in enumerate(train_loader, 1):
+    for i, (samples, sdf) in enumerate(train_loader, 1):
         # Prepare data
-        inputs = full_inputs.float().to(device)
-        mask = inputs[:, [0]].eq(3).float()  # position of truncated values
+        inputs = sdf.float()
+        #mask = inputs[:, [0]].eq(3).float()  # position of truncated values
+        #mask += inputs[:, [0]].eq(-3).float()  # position of truncated values
         batch_size = len(inputs)
+        sample_size = samples.size(1)
 
         # Code and query generation
-        code = codenet(inputs)
+        code = codenet.encoder(inputs)
+        #print(code.shape)
         #samples = sample_points(batch_size, 10000)
 
         # Prepare for forward pass
         model.train()
         optim.zero_grad()
         losses = []
-        batch_loss = 0
 
-        for k in range(dim):
-            for j in range(dim):
-                for i in range(dim):
-                    for b in range(batch_size):
-                        if mask[b, 0, i, j, k] == 1:
-                            continue
+        x = torch.zeros((sample_size, batch_size, code.size(1)+3))
+        targets = torch.zeros((sample_size, batch_size))
+        for s in range(sample_size):
+            for b in range(batch_size):
+                i = int(samples[b, s, 0].item())
+                j = int(samples[b, s, 1].item())
+                k = int(samples[b, s, 2].item())
+                #print(b, s, i, j, k)
 
-                        targets = inputs[b, 0, i, j, k]
+                x[s, b] = torch.cat([code[[b]], torch.Tensor([[i, j, k]])], dim=1).to(device)
+                targets[s, b] = inputs[b, 0, i, j, k]
+
+            x.to(device)
+            outputs = model(x[s])
+            targets.to(device)
+
+            # Compute loss
+            #print(x.shape, outputs.shape, targets.shape)
+            loss = loss_func(outputs, targets[s])
+            loss.backward(retain_graph=True)
+            losses.append(float(loss))
+
+
+        #for k in range(dim):
+        #    for j in range(dim):
+        #        for i in range(dim):
+        #            for b in range(batch_size):
+        #                if mask[b, 0, i, j, k] == 1:
+        #                    continue
+
+        #                targets = inputs[b, 0, i, j, k]
 
                         # Forward pass
-                        x = torch.cat([code[[b]], torch.Tensor([[i, j, k]])], dim=1).to(device)
-                        outputs = model(x)
+        #                x = torch.cat([code[[b]], torch.Tensor([[i]]), torch.Tensor([[j]]), torch.Tensor([[k]])], dim=1).to(device)
+        #                outputs = model(x)
 
                         # Compute loss
                         #print(outputs, targets)
-                        loss = loss_func(outputs, targets)
-                        losses.append(loss)
-
-        total_loss = sum(losses)
-        total_loss.backward()
+        #                loss = loss_func(outputs, targets)
+        #                losses.append(loss)
         optim.step()
 
         # Update progress
-        batch_loss += float(total_loss)
-        train_loss_history.append(batch_loss)
+        train_loss_history.append(sum(losses))
 
         # Logging iteration
         if args.log_interval and i % args.log_interval == 0:
@@ -212,9 +234,9 @@ for epoch in range(start_epoch, args.epochs):
 
             model.eval()
             with torch.no_grad():
-                for (partial_inputs, full_inputs) in val_loader:
+                for (samples, sdf) in val_loader:
                     # Prepare data
-                    inputs = full_inputs.to(device)
+                    inputs = sdf.to(device)
 
                     # Forward pass
                     #outputs = model(inputs)

@@ -195,3 +195,78 @@ def improveSDF(sdf, num_it=1, dim=32):
 
 def sample_points(batch_size, N=100):
     return np.random.randint(0, high=31, size=(N, batch_size, 3))
+
+def get_areas_and_vectors(verts, faces):
+  areas = []
+  anchor = verts[faces[:,0]]
+  v1 = verts[faces[:,1]] - anchor
+  v2 = verts[faces[:,2]] - anchor
+
+  cross = np.cross(v1,v2)
+  area = np.linalg.norm(cross, axis=1)/2
+
+  return np.cumsum(area), [anchor,v1,v2]
+
+def choose_random_faces(areas, n=1):
+  random_v = np.random.uniform(areas[-1], size=(n,1))
+  random_i = [np.searchsorted(areas,v) for v in random_v]
+
+  return random_i
+
+def sample_triangle_uniform(v, faces):
+
+  samples = []
+  for face in faces:
+    a1=a2=1
+    while a1+a2 > 1:
+      a1 = np.random.uniform(0,1)
+      a2 = np.random.uniform(0,1)
+    x = v[0][face] + a1*v[1][face] + a2*v[2][face]
+    samples.append(x)
+
+  return samples
+
+def compute_distance(samples, df):
+  from scipy.interpolate import RegularGridInterpolator
+
+  dist = AverageMeter()
+  grid = np.linspace(0,31,32)
+  interpolator = RegularGridInterpolator((grid,grid,grid), df, method='linear')
+
+  for v in interpolator(samples):
+    if v is not None:
+      dist.update(v)
+
+  return dist.avg
+
+def compute_l1_error(inputs, targets, n=1):
+  inputs, targets = inputs.data.cpu().numpy(), targets.data.cpu().numpy()
+
+  '''
+  import matplotlib.pyplot as plt
+  from mpl_toolkits.mplot3d import Axes3D
+  fig = plt.figure(1, figsize=(15,10))
+  ax1 = fig.add_subplot(111, projection='3d')
+  ax1.view_init(elev=150, azim=-120)
+  '''
+
+  skipped = 0
+  err = AverageMeter()
+  for i,df in enumerate(inputs):
+    try:
+      verts, faces = isosurface(df[0], 1, 1)
+    except:
+      skipped += 1
+      continue
+    #ax1.plot_trisurf(verts[:,0],verts[:,1],faces,verts[:,2], lw=1, cmap="Spectral")
+    #plt.show()
+    for _ in range(n):
+      face = choose_random_face(verts, faces)
+      samples = sample_triangle_uniform(verts, face)
+      dist = compute_distance(samples, targets[i,0])
+      err.update(dist)
+
+  if skipped > 1:
+    print("Skipped samples due to lack of surfaces: {:d}".format(skipped))
+
+  return err
