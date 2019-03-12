@@ -157,9 +157,9 @@ if len(checkpoint) > 0:
 
 device = torch.device("cuda:0" if model.is_cuda else "cpu")
 for epoch in range(start_epoch, args.epochs):
-    for i, (samples, sdf) in enumerate(train_loader, 1):
+    for it, (samples, sdf) in enumerate(train_loader, 1):
         # Prepare data
-        samples = samples[torch.randint(0, len(samples), (1000,))]
+        samples = samples[:, torch.randint(0, len(samples), (10,))]
         inputs = sdf.float()
         #mask = inputs[:, [0]].eq(3).float()  # position of truncated values
         #mask += inputs[:, [0]].eq(-3).float()  # position of truncated values
@@ -176,25 +176,25 @@ for epoch in range(start_epoch, args.epochs):
         optim.zero_grad()
         losses = []
 
-        x = torch.zeros((sample_size, batch_size, code.size(1)+3))
-        targets = torch.zeros((sample_size, batch_size))
-        for s in range(sample_size):
-            for b in range(batch_size):
+        x = torch.zeros((batch_size * sample_size, code.size(1)+3))
+        targets = torch.zeros((batch_size * sample_size))
+        for b in range(batch_size):
+            for s in range(sample_size):
                 i = int(samples[b, s, 0].item())
                 j = int(samples[b, s, 1].item())
                 k = int(samples[b, s, 2].item())
                 #print(b, s, i, j, k)
 
-                x[s, b] = torch.cat([code[[b]], torch.Tensor([[i, j, k]])], dim=1).to(device)
-                targets[s, b] = inputs[b, 0, i, j, k]
+                x[b*sample_size+s] = torch.cat([code[[b]], torch.Tensor([[i, j, k]])], dim=1).to(device)
+                targets[b*sample_size+s] = inputs[b, 0, i, j, k]
 
         x.to(device)
-        outputs = model(x.view(sample_size*batch_size, -1))
+        outputs = model(x)
         targets.to(device)
 
         # Compute loss
         #print(x.shape, outputs.shape, targets.shape)
-        loss = loss_func(outputs, targets.view(sample_size*batch_size, -1))
+        loss = loss_func(outputs, targets)
         loss.backward()
         optim.step()
         #losses.append(float(loss))
@@ -222,13 +222,13 @@ for epoch in range(start_epoch, args.epochs):
         train_loss_history.append(float(loss))
 
         # Logging iteration
-        if args.log_interval and i % args.log_interval == 0:
+        if args.log_interval and it % args.log_interval == 0:
             mean_nth_loss = np.mean(train_loss_history[-args.log_interval:])
-            print('[Iteration {:d}/{:d}] TRAIN loss: {:.2e}'.format(i + epoch * iter_per_epoch,
+            print('[Iteration {:d}/{:d}] TRAIN loss: {:.2e}'.format(it + epoch * iter_per_epoch,
                   iter_per_epoch * args.epochs, mean_nth_loss))
 
         # Validation
-        if i % (iter_per_epoch / (args.sub_epochs + 1)) < 1:
+        if it % (iter_per_epoch / (args.sub_epochs + 1)) < 1:
             sub_val_loss = AverageMeter()
 
             model.eval()
@@ -247,7 +247,7 @@ for epoch in range(start_epoch, args.epochs):
             val_loss_history.append(sub_val_loss.avg)
 
             if args.log_interval:
-                print('[Iteration {:d}/{:d}] VAL   loss: {:.2e}'.format(i + epoch * iter_per_epoch,
+                print('[Iteration {:d}/{:d}] VAL   loss: {:.2e}'.format(it + epoch * iter_per_epoch,
                                                                         iter_per_epoch * args.epochs, val_loss_history[-1]))
 
     # Epoch logging
