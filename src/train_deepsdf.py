@@ -2,7 +2,6 @@
 import argparse
 import torch
 import numpy as np
-import math
 import os
 
 from nn import AENet, DeepSDF
@@ -122,7 +121,6 @@ else:
     import sys
     sys.exit(0)
 
-dim = 32
 model = DeepSDF(code_length=code_length, n_features=args.n_features)
 checkpoint = {}
 if args.model:
@@ -161,6 +159,7 @@ device = torch.device("cuda:0" if model.is_cuda else "cpu")
 for epoch in range(start_epoch, args.epochs):
     for i, (samples, sdf) in enumerate(train_loader, 1):
         # Prepare data
+        samples = samples[torch.randint(0, len(samples), (1000,))]
         inputs = sdf.float()
         #mask = inputs[:, [0]].eq(3).float()  # position of truncated values
         #mask += inputs[:, [0]].eq(-3).float()  # position of truncated values
@@ -189,15 +188,16 @@ for epoch in range(start_epoch, args.epochs):
                 x[s, b] = torch.cat([code[[b]], torch.Tensor([[i, j, k]])], dim=1).to(device)
                 targets[s, b] = inputs[b, 0, i, j, k]
 
-            x.to(device)
-            outputs = model(x[s])
-            targets.to(device)
+        x.to(device)
+        outputs = model(x.view(sample_size*batch_size, -1))
+        targets.to(device)
 
-            # Compute loss
-            #print(x.shape, outputs.shape, targets.shape)
-            loss = loss_func(outputs, targets[s])
-            loss.backward(retain_graph=True)
-            losses.append(float(loss))
+        # Compute loss
+        #print(x.shape, outputs.shape, targets.shape)
+        loss = loss_func(outputs, targets.view(sample_size*batch_size, -1))
+        loss.backward()
+        optim.step()
+        #losses.append(float(loss))
 
 
         #for k in range(dim):
@@ -217,10 +217,9 @@ for epoch in range(start_epoch, args.epochs):
                         #print(outputs, targets)
         #                loss = loss_func(outputs, targets)
         #                losses.append(loss)
-        optim.step()
 
         # Update progress
-        train_loss_history.append(sum(losses))
+        train_loss_history.append(float(loss))
 
         # Logging iteration
         if args.log_interval and i % args.log_interval == 0:
